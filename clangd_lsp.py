@@ -13,11 +13,16 @@ from sansio_lsp_client.io_handler import _make_request, _make_response
 
 INCLUDE_REGEX = re.compile(r"#include [\"<](.*)[\">]")
 
-# This is a list of known filenames where clangd produces a
-# false positive when suggesting unused includes to remove
+# This is a list of known filenames where clangd produces a false
+# positive when suggesting unused includes to remove. Usually these
+# are umbrella headers, or headers where clangd thinks the canonical
+# location for a symbol is actually in a forward declaration, causing
+# it to flag the correct header as unused everywhere, so ignore those.
 UNUSED_INCLUDE_IGNORE_LIST = [
+    "base/bind.h",
+    "base/trace_event/base_tracing.h",
     "build/build_config.h",
-    # TODO - Populate this list
+    # TODO - Keep populating this list
 ]
 
 

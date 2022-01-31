@@ -163,13 +163,15 @@ class ClangdClient:
         return True
 
     def open_document(self, filename: str) -> lsp.TextDocumentItem:
-        # TODO - How to mark header files as Objective-C++? Does it matter?
+        # TODO - How to mark header files as Objective-C++ or C? Does it matter?
         if filename.endswith(".h") or filename.endswith(".cc"):
             language_id = "cpp"
+        elif filename.endswith(".c"):
+            language_id = "c"
         elif filename.endswith(".mm"):
             language_id = "objective-cpp"
         else:
-            raise RuntimeError("Unknown file type")
+            raise RuntimeError(f"Unknown file extension: {filename}")
 
         with open((self.root_path / filename), "r") as f:
             file_contents = f.read()

@@ -30,19 +30,23 @@ async def find_unused_edges(
     unused_edges = []
 
     for root in include_analysis["roots"]:
-        for unused_include in await clangd_client.get_unused_includes(root):
-            try:
-                unused_edges.append(
-                    (
-                        root,
-                        unused_include,
-                        include_analysis["esizes"][root][unused_include],
+        try:
+            for unused_include in await clangd_client.get_unused_includes(root):
+                # TODO - Try to handle generated output files like .*buildflags.h which are under out/Default/gen
+                try:
+                    unused_edges.append(
+                        (
+                            root,
+                            unused_include,
+                            include_analysis["esizes"][root][unused_include],
+                        )
                     )
-                )
-            except KeyError:
-                logging.error(
-                    f"clangd returned an unused include not in the include analysis output: {unused_include}"
-                )
+                except KeyError:
+                    logging.error(
+                        f"clangd returned an unused include not in the include analysis output: {unused_include}"
+                    )
+        except Exception:
+            logging.exception(f"Skipping file due to unexpected error: {root}")
 
         if progress_callback:
             progress_callback(root)

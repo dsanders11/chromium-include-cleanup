@@ -117,7 +117,7 @@ async def main():
     unused_edges = None
 
     try:
-        progress_output = tqdm(total=len(include_analysis["roots"]))
+        progress_output = tqdm(total=len(include_analysis["roots"]), unit="file")
         await clangd_client.start()
 
         with logging_redirect_tqdm():

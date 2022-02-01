@@ -25,11 +25,12 @@ TODO
 
 ## Current Limitations
 
-Currently the `find_unused_edges.py` script has problems with generated output
-files since the filename used in the `#include` line does not match what is
-found in the include analysis output. This also affects parts of the codebase
-where includes are relative to a subdirectory, since again the filenames will
-not match. This can likely be improved with a bit of effort.
+Currently the `find_unused_edges.py` script has problems when the filename in
+the `#include` line does not match the filename in the include analysis
+output, which could happen for includes inside third-party code which is
+including relative to itself, not the Chromium src root.
+
+Currently `find_unused_edges.py` is single-threaded so performance is slow.
 
 ## Accuracy of Output
 

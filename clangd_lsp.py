@@ -231,8 +231,8 @@ class ClangdClient:
 
             try:
                 included_filename = INCLUDE_REGEX.match(text).group(1)
-            except Exception:
-                logging.error(f"Couldn't match #include regex to diagnostic line: {included_filename}")
+            except AttributeError:
+                logging.error(f"Couldn't match #include regex to diagnostic line: {text}")
             else:
                 ignore_edge = (filename, included_filename) in UNUSED_EDGE_IGNORE_LIST
                 ignore_include = included_filename in UNUSED_INCLUDE_IGNORE_LIST

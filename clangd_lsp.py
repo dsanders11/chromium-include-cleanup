@@ -17,12 +17,21 @@ INCLUDE_REGEX = re.compile(r"#include [\"<](.*)[\">]")
 # are umbrella headers, or headers where clangd thinks the canonical
 # location for a symbol is actually in a forward declaration, causing
 # it to flag the correct header as unused everywhere, so ignore those.
-UNUSED_INCLUDE_IGNORE_LIST = [
+UNUSED_INCLUDE_IGNORE_LIST = (
     "base/bind.h",
+    "base/callback.h",
+    "base/compiler_specific.h",
+    "base/strings/string_piece.h",
     "base/trace_event/base_tracing.h",
     "build/build_config.h",
+    "mojo/public/cpp/bindings/pending_receiver.h",
     # TODO - Keep populating this list
-]
+)
+
+UNUSED_EDGE_IGNORE_LIST = (
+    ("base/memory/aligned_memory.h", "base/bits.h"),
+    # TODO - Keep populating this list
+)
 
 
 class AsyncSendLspClient(lsp.Client):
@@ -225,7 +234,11 @@ class ClangdClient:
             except Exception:
                 logging.error(f"Couldn't match #include regex to diagnostic line: {included_filename}")
             else:
-                if included_filename not in UNUSED_INCLUDE_IGNORE_LIST:
+                ignore_edge = (filename, included_filename) in UNUSED_EDGE_IGNORE_LIST
+                ignore_include = included_filename in UNUSED_INCLUDE_IGNORE_LIST
+
+                # Cut down on noise by ignoring known false positives
+                if not ignore_edge and not ignore_include:
                     unused_includes.append(included_filename)
 
         return unused_includes

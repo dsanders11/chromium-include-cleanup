@@ -101,10 +101,15 @@ async def main():
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
-    # Filter the filenames if a filter was provided, so not all files are processed
+    # Filter out some files we know we don't want to process, like the system headers
+    filenames = [
+        filename for filename in include_analysis["files"] if not re.match(r"^(?:buildtools|build)/", filename)
+    ]
+
+    # Further filter the filenames if a filter was provided, so not all files are processed
     filenames = [
         filename
-        for filename in include_analysis["files"]
+        for filename in filenames
         if not filename_filter or (filename_filter and filename_filter.match(filename))
     ]
 

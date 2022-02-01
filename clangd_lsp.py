@@ -144,9 +144,6 @@ class ClangdClient:
         ):
             msg.reply()
 
-        elif isinstance(msg, lsp.WorkspaceFolders):
-            msg.reply([lsp.WorkspaceFolder(uri=self.root_uri, name="Root")])
-
     async def _wait_for_message_of_type(self, message_type, timeout=5):
         # First check already processed messages
         for message in self._messages:

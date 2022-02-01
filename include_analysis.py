@@ -14,7 +14,7 @@ class IncludeAnalysisOutput(TypedDict):
     prevalence: Dict[str, int]
 
 
-def parse_raw_include_analysis_output(output: str) -> IncludeAnalysisOutput:
+def parse_raw_include_analysis_output(output: str, strip_gen_prefix: bool = False) -> IncludeAnalysisOutput:
     """
     Parses the raw output JavaScript file from the include analysis script and expands it
 
@@ -27,8 +27,13 @@ def parse_raw_include_analysis_output(output: str) -> IncludeAnalysisOutput:
     except json.JSONDecodeError:
         return None
 
-    # Nothing needs to be done with "files", it's already just a list of filenames
-    files = parsed_output["files"]
+    # If requested, strip off the path prefix for generated files
+    generated_file_prefix = re.compile(r"^(?:out/\w+/gen/)?(.*)$")
+
+    files = parsed_output["files"] = [
+        generated_file_prefix.match(filename).group(1) if strip_gen_prefix else filename
+        for filename in parsed_output["files"]
+    ]
 
     # "roots" is a list of root filenames
     parsed_output["roots"] = [files[nr] for nr in parsed_output["roots"]]

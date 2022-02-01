@@ -29,27 +29,40 @@ async def find_unused_edges(
     """Finds unused edges according to clangd and returns a list of [includer, included, asize]"""
 
     unused_edges = []
+    work_queue = asyncio.Queue()
 
+    # Fill the queue with the filenames to process
     for filename in filenames:
-        try:
-            for unused_include in await clangd_client.get_unused_includes(filename):
-                try:
-                    unused_edges.append(
-                        (
-                            filename,
-                            unused_include,
-                            edge_sizes[filename][unused_include],
-                        )
-                    )
-                except KeyError:
-                    logging.error(
-                        f"clangd returned an unused include not in the include analysis output: {unused_include}"
-                    )
-        except Exception:
-            logging.exception(f"Skipping file due to unexpected error: {filename}")
+        work_queue.put_nowait(filename)
 
-        if progress_callback:
-            progress_callback(filename)
+    async def worker():
+        while True:
+            try:
+                filename = work_queue.get_nowait()
+            except asyncio.QueueEmpty:
+                break
+
+            try:
+                for unused_include in await clangd_client.get_unused_includes(filename):
+                    try:
+                        unused_edges.append(
+                            (
+                                filename,
+                                unused_include,
+                                edge_sizes[filename][unused_include],
+                            )
+                        )
+                    except KeyError:
+                        logging.error(
+                            f"clangd returned an unused include not in the include analysis output: {unused_include}"
+                        )
+            except Exception:
+                logging.exception(f"Skipping file due to unexpected error: {filename}")
+
+            if progress_callback:
+                progress_callback(filename)
+
+    await asyncio.gather(worker(), worker())
 
     return unused_edges
 

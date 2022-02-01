@@ -25,21 +25,17 @@ async def find_unused_edges(
     filenames: List[str],
     edge_sizes: Dict[str, Dict[str, int]],
     progress_callback: Callable[[str], None] = None,
-) -> List[Tuple[str, str, int]]:
+):
     """Finds unused edges according to clangd and returns a list of [includer, included, asize]"""
-
-    unused_edges = []
 
     for filename in filenames:
         try:
             for unused_include in await clangd_client.get_unused_includes(filename):
                 try:
-                    unused_edges.append(
-                        (
-                            filename,
-                            unused_include,
-                            edge_sizes[filename][unused_include],
-                        )
+                    yield (
+                        filename,
+                        unused_include,
+                        edge_sizes[filename][unused_include],
                     )
                 except KeyError:
                     logging.error(
@@ -50,8 +46,6 @@ async def find_unused_edges(
 
         if progress_callback:
             progress_callback(filename)
-
-    return unused_edges
 
 
 # TODO - Ctrl+C doesn't cleanly exit
@@ -124,29 +118,26 @@ async def main():
         args.compile_commands_dir.resolve() if args.compile_commands_dir else None,
     )
 
-    unused_edges = None
-
     try:
+        csv_writer = csv.writer(sys.stdout)
         progress_output = tqdm(total=len(filenames), unit="file")
         await clangd_client.start()
 
         with logging_redirect_tqdm():
             progress_output.display()
-            unused_edges = await find_unused_edges(
+
+            # Incrementally output the unused edges so that it doesn't need to
+            # wait for hours before any output happens, when something could crash
+            async for unused_edge in find_unused_edges(
                 clangd_client,
                 filenames,
                 include_analysis["esizes"],
                 progress_callback=lambda _: progress_output.update(),
-            )
+            ):
+                csv_writer.writerow(unused_edge)
     finally:
         progress_output.close()
         await clangd_client.exit()
-
-    if unused_edges:
-        # Dump unused edges as CSV output on stdout
-        sys.stdout.reconfigure(newline="")
-        csv_writer = csv.writer(sys.stdout)
-        csv_writer.writerows(unused_edges)
 
     return 0
 

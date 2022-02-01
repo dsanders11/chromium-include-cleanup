@@ -14,14 +14,12 @@ class IncludeAnalysisOutput(TypedDict):
     prevalence: Dict[str, int]
 
 
-def parse_raw_include_analysis_output(output: str, root_filter: re.Pattern = None) -> IncludeAnalysisOutput:
+def parse_raw_include_analysis_output(output: str) -> IncludeAnalysisOutput:
     """
     Parses the raw output JavaScript file from the include analysis script and expands it
 
     Converts the file numbers to the full filename strings to make it easier to work with,
-    and deletes the 'files' key since that is only needed for expanding the file numbers
-
-    Also converts the various keys back into full dicts
+    and also converts the various keys back into full dicts.
     """
     try:
         # TODO - Validate with JSON Schema?
@@ -29,12 +27,11 @@ def parse_raw_include_analysis_output(output: str, root_filter: re.Pattern = Non
     except json.JSONDecodeError:
         return None
 
-    files = parsed_output.pop("files")
+    # Nothing needs to be done with "files", it's already just a list of filenames
+    files = parsed_output["files"]
 
-    # Filter the roots while expanding them back to filenames
-    parsed_output["roots"] = [
-        files[nr] for nr in parsed_output["roots"] if not root_filter or (root_filter and root_filter.match(files[nr]))
-    ]
+    # "roots" is a list of root filenames
+    parsed_output["roots"] = [files[nr] for nr in parsed_output["roots"]]
 
     # "includes" is a dict of filename to a list of included filenames
     parsed_output["includes"] = {

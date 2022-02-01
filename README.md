@@ -27,7 +27,25 @@ Diagnostics:
 
 ## Finding Unused Includes
 
-TODO
+These instructions assume you've already built and processed the build
+log with `include_analysis.py`, if you haven't, see the link above under
+"Prerequisites". It assumes the output is at `~/include-analysis.js`, so
+adjust to taste.
+
+This also assumes you have `clangd` on your `$PATH`.
+
+```shell
+$ cd ~/chromium/src/out/Default
+$ gn gen . --export-compile-commands
+$ python3 ~/chromium-include-cleanup/post_process_compilation_db.py compile_commands.json > compile_commands-fixed.json
+$ mv compile_commands-fixed.json compile_commands.json
+$ cd ../../
+$ python3 ~/chromium-include-cleanup/find_unused_edges.py --compile-commands-dir=out/Default ~/include-analysis.js > unused-edges.csv
+```
+
+Another useful option is `--filename-filter=^base/`, which lets you filter the
+files which will be analyzed, which can speed things up considerably if it is
+limited to a subset of the codebase.
 
 ## Current Limitations
 

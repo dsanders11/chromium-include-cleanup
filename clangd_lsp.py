@@ -10,6 +10,8 @@ import sansio_lsp_client as lsp
 from sansio_lsp_client.io_handler import _make_request, _make_response
 from sansio_lsp_client.structs import JSONDict, Request
 
+from utils import get_worker_count
+
 INCLUDE_REGEX = re.compile(r"#include [\"<](.*)[\">]")
 
 # This is a list of known filenames where clangd produces a false
@@ -82,6 +84,7 @@ class ClangdClient:
         self._concurrent_tasks = None
         self._messages = []
         self._new_messages = asyncio.Queue()
+        self._notification_queues = []
 
     async def _send_stdin(self):
         while self._process:
@@ -100,8 +103,13 @@ class ClangdClient:
 
             # Parse the output and enqueue it
             for event in self.lsp_client.recv(data):
-                self._new_messages.put_nowait(event)
-                self._try_default_reply(event)
+                if isinstance(event, lsp.ServerNotification):
+                    # If a notification comes in, tell anyone listening
+                    for queue in self._notification_queues:
+                        queue.put_nowait(event)
+                else:
+                    self._new_messages.put_nowait(event)
+                    self._try_default_reply(event)
 
             # TODO - Log the output for debugging purposes
             # How best to do this without getting too into
@@ -117,7 +125,7 @@ class ClangdClient:
             self.logger.debug(line.decode("utf8").rstrip())
 
     async def start(self):
-        args = ["--enable-config", "--background-index=false"]
+        args = ["--enable-config", "--background-index=false", f"-j={get_worker_count()}"]
 
         if self.compile_commands_dir:
             args.append(f"--compile-commands-dir={self.compile_commands_dir}")
@@ -166,6 +174,31 @@ class ClangdClient:
                 return message
             else:
                 self._messages.append(message)
+
+    @contextlib.asynccontextmanager
+    async def listen_for_notifications(self, cancellation_token=None):
+        queue = asyncio.Queue()
+        if cancellation_token is None:
+            cancellation_token = asyncio.Event()
+
+        async def get_notifications():
+            cancellation_token_task = asyncio.create_task(cancellation_token.wait())
+
+            while not cancellation_token.is_set():
+                queue_task = asyncio.create_task(queue.get())
+                done, _ = await asyncio.wait(
+                    {queue_task, cancellation_token_task}, return_when=asyncio.FIRST_COMPLETED
+                )
+
+                if cancellation_token in done:
+                    break
+                else:
+                    yield queue_task.result()
+
+        self._notification_queues.append(queue)
+        yield get_notifications()
+        cancellation_token.set()
+        self._notification_queues.remove(queue)
 
     @staticmethod
     def validate_config(root_path: pathlib.Path):
@@ -217,11 +250,12 @@ class ClangdClient:
 
         async with self.with_document(filename) as document:
             document_contents = document.text
-            while True:
-                event = await self._wait_for_message_of_type(lsp.PublishDiagnostics, timeout=None)
-                if event.uri == document.uri:
-                    diagnostics = event.diagnostics
-                    break
+            async with self.listen_for_notifications() as notifications:
+                async for notification in notifications:
+                    if isinstance(notification, lsp.PublishDiagnostics):
+                        if notification.uri == document.uri:
+                            diagnostics = notification.diagnostics
+                            break
 
         # Parse diagnostics looking for unused includes
         for diagnostic in (diag for diag in diagnostics if diag.code == "unused-includes"):

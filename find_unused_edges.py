@@ -18,6 +18,7 @@ sys.path.insert(0, pathlib.Path(__file__).parent.resolve())
 
 from clangd_lsp import ClangdClient
 from include_analysis import parse_raw_include_analysis_output
+from utils import get_worker_count
 
 
 async def find_unused_edges(
@@ -28,24 +29,52 @@ async def find_unused_edges(
 ):
     """Finds unused edges according to clangd and returns a list of [includer, included, asize]"""
 
-    for filename in filenames:
-        try:
-            for unused_include in await clangd_client.get_unused_includes(filename):
-                try:
-                    yield (
-                        filename,
-                        unused_include,
-                        edge_sizes[filename][unused_include],
-                    )
-                except KeyError:
-                    logging.error(
-                        f"clangd returned an unused include not in the include analysis output: {unused_include}"
-                    )
-        except Exception:
-            logging.exception(f"Skipping file due to unexpected error: {filename}")
+    unused_edges = asyncio.Queue()
+    work_queue = asyncio.Queue()
 
-        if progress_callback:
-            progress_callback(filename)
+    # Fill the queue with the filenames to process
+    for filename in filenames:
+        work_queue.put_nowait(filename)
+
+    async def worker():
+        while work_queue.qsize() > 0:
+            filename = work_queue.get_nowait()
+
+            try:
+                for unused_include in await clangd_client.get_unused_includes(filename):
+                    try:
+                        unused_edges.put_nowait(
+                            (
+                                filename,
+                                unused_include,
+                                edge_sizes[filename][unused_include],
+                            )
+                        )
+                    except KeyError:
+                        logging.error(
+                            f"clangd returned an unused include not in the include analysis output: {unused_include}"
+                        )
+            except Exception:
+                logging.exception(f"Skipping file due to unexpected error: {filename}")
+
+            if progress_callback:
+                progress_callback(filename)
+
+        unused_edges.put_nowait(None)
+
+    worker_count = get_worker_count()
+    done_count = 0
+
+    work = asyncio.gather(*[worker() for _ in range(worker_count)])
+
+    while done_count < worker_count:
+        result = await unused_edges.get()
+        if result is not None:
+            yield result
+        else:
+            done_count += 1
+
+    await work
 
 
 # TODO - Ctrl+C doesn't cleanly exit

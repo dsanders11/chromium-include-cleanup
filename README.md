@@ -54,8 +54,6 @@ the `#include` line does not match the filename in the include analysis
 output, which could happen for includes inside third-party code which is
 including relative to itself, not the Chromium src root.
 
-Currently `find_unused_edges.py` is single-threaded so performance is slow.
-
 ## Accuracy of Output
 
 These scripts rely on `clangd` and specifically the "IncludeCleaner" feature

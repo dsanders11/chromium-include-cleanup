@@ -33,7 +33,6 @@ async def find_unused_edges(
     for filename in filenames:
         try:
             for unused_include in await clangd_client.get_unused_includes(filename):
-                # TODO - Try to handle generated output files like .*buildflags.h which are under out/Default/gen
                 try:
                     unused_edges.append(
                         (

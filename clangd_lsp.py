@@ -24,6 +24,7 @@ UNUSED_INCLUDE_IGNORE_LIST = (
     "base/strings/string_piece.h",
     "base/trace_event/base_tracing.h",
     "build/build_config.h",
+    "mojo/public/cpp/bindings/pending_receiver.h",
     # TODO - Keep populating this list
 )
 

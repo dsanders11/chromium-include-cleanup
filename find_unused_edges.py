@@ -92,7 +92,7 @@ async def main():
         print("error: --compile-commands-dir must be a directory")
         return 1
 
-    include_analysis = parse_raw_include_analysis_output(args.include_analysis_output.read())
+    include_analysis = parse_raw_include_analysis_output(args.include_analysis_output.read(), strip_gen_prefix=True)
 
     if not include_analysis:
         print("error: Could not process include analysis output file")

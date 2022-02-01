@@ -17,7 +17,13 @@ To use these scripts, you'll need:
 
 ## `clangd` Configuration
 
-TODO
+You need to enable `UnusedIncludes` diagnostics in a `clangd`
+[config file][clangd-config]:
+
+```yaml
+Diagnostics:
+  UnusedIncludes: Strict
+```
 
 ## Finding Unused Includes
 
@@ -53,3 +59,4 @@ Known situations in Chromium where `clangd` will produce false positives:
 
 [clangd-releases]: https://github.com/clangd/clangd/releases
 [include-analysis]: https://groups.google.com/a/chromium.org/g/chromium-dev/c/0ZME4DuE06k
+[clangd-config]: https://clangd.llvm.org/config#files

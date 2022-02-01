@@ -7,9 +7,8 @@ import subprocess
 from typing import List, Optional
 
 import sansio_lsp_client as lsp
-from sansio_lsp_client.structs import Diagnostic, JSONDict, Request
 from sansio_lsp_client.io_handler import _make_request, _make_response
-
+from sansio_lsp_client.structs import JSONDict, Request
 
 INCLUDE_REGEX = re.compile(r"#include [\"<](.*)[\">]")
 

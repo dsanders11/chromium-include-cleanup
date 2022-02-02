@@ -52,6 +52,8 @@ async def find_unused_edges(
             except ClangdCrashed:
                 logging.error(f"Skipping file due to clangd crash: {filename}")
                 raise
+            except FileNotFoundError:
+                logging.error(f"Skipping file due to file not found: {filename}")
             except Exception:
                 logging.exception(f"Skipping file due to unexpected error: {filename}")
             finally:

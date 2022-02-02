@@ -306,9 +306,9 @@ class ClangdClient:
         return unused_includes
 
     async def exit(self):
-        if self._process and not self._process_gone.is_set():
+        if self._process:
             try:
-                if self._process.returncode is None:
+                if self._process.returncode is None and not self._process_gone.is_set():
                     self.lsp_client.shutdown()
                     shutdown_task = asyncio.create_task(self._wait_for_message_of_type(lsp.Shutdown, timeout=None))
                     done, _ = await asyncio.wait(
@@ -317,9 +317,10 @@ class ClangdClient:
                     if shutdown_task in done:
                         self.lsp_client.exit()
             except Exception:
-                self._process.terminate()
+                pass
             finally:
                 # Cleanup the subprocess
+                self._process.terminate()
                 await self._process.wait()
                 self._process = None
 

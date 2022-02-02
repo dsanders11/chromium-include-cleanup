@@ -167,18 +167,18 @@ async def main():
     with logging_redirect_tqdm(), tqdm(total=len(filenames), unit="file") as progress_output:
         await clangd_client.start()
 
-        # Incrementally output the unused edges so that it doesn't need to
-        # wait for hours before any output happens, when something could crash
-        async for unused_edge in find_unused_edges(
-            clangd_client,
-            filenames,
-            edge_sizes,
-            progress_callback=lambda _: progress_output.update(),
-        ):
-            csv_writer.writerow(unused_edge)
-
-        # This isn't really needed other than as a nicety
-        await clangd_client.exit()
+        try:
+            # Incrementally output the unused edges so that it doesn't need to
+            # wait for hours before any output happens, when something could crash
+            async for unused_edge in find_unused_edges(
+                clangd_client,
+                filenames,
+                edge_sizes,
+                progress_callback=lambda _: progress_output.update(),
+            ):
+                csv_writer.writerow(unused_edge)
+        finally:
+            await clangd_client.exit()
 
     return 0
 

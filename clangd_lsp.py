@@ -32,6 +32,12 @@ UNUSED_INCLUDE_IGNORE_LIST = (
 
 UNUSED_EDGE_IGNORE_LIST = (
     ("base/memory/aligned_memory.h", "base/bits.h"),
+    ("chrome/browser/ui/browser.h", "chrome/browser/ui/signin_view_controller.h"),
+    ("ipc/ipc_message_macros.h", "base/task/common/task_annotator.h"),
+    (
+        "third_party/blink/renderer/platform/wtf/allocator/allocator.h",
+        "base/allocator/partition_allocator/partition_alloc.h",
+    ),
     # TODO - Keep populating this list
 )
 

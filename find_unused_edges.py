@@ -116,7 +116,7 @@ async def main():
         print("error: --compile-commands-dir must be a directory")
         return 1
 
-    include_analysis = parse_raw_include_analysis_output(args.include_analysis_output.read(), strip_gen_prefix=True)
+    include_analysis = parse_raw_include_analysis_output(args.include_analysis_output.read())
 
     if not include_analysis:
         print("error: Could not process include analysis output file")
@@ -125,9 +125,11 @@ async def main():
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
-    # Filter out some files we know we don't want to process, like the system headers
+    # Filter out some files we know we don't want to process, like the system headers, and *.inc files
     filenames = [
-        filename for filename in include_analysis["files"] if not re.match(r"^(?:buildtools|build)/", filename)
+        filename
+        for filename in include_analysis["files"]
+        if not re.match(r"^(?:buildtools|build)/", filename) and not filename.endswith(".inc")
     ]
 
     # Further filter the filenames if a filter was provided, so not all files are processed
@@ -136,6 +138,17 @@ async def main():
         for filename in filenames
         if not filename_filter or (filename_filter and filename_filter.match(filename))
     ]
+
+    # Strip off the path prefix for generated file includes so matching will work
+    generated_file_prefix = re.compile(r"^(?:out/\w+/gen/)?(.*)$")
+
+    edge_sizes = {
+        filename: {
+            generated_file_prefix.match(included).group(1): size
+            for included, size in include_analysis["esizes"][filename].items()
+        }
+        for filename in include_analysis["esizes"]
+    }
 
     root_path = args.chromium_src.resolve()
 
@@ -159,7 +172,7 @@ async def main():
         async for unused_edge in find_unused_edges(
             clangd_client,
             filenames,
-            include_analysis["esizes"],
+            edge_sizes,
             progress_callback=lambda _: progress_output.update(),
         ):
             csv_writer.writerow(unused_edge)

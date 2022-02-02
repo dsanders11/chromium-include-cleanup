@@ -14,8 +14,16 @@ from utils import get_worker_count
 
 INCLUDE_REGEX = re.compile(r"\s*#include [\"<](.*)[\">]")
 
+# This is a list of known filenames to skip when checking for unused
+# includes. It's mostly a list of umbrella headers where the includes
+# will appear to clangd to be unused, but are meant to be included.
+UNUSED_INCLUDE_FILENAME_SKIP_LIST = (
+    "base/trace_event/base_tracing.h",
+    # TODO - Keep populating this list
+)
+
 # This is a list of known filenames where clangd produces a false
-# positive when suggesting unused includes to remove. Usually these
+# positive when suggesting as unused includes to remove. Usually these
 # are umbrella headers, or headers where clangd thinks the canonical
 # location for a symbol is actually in a forward declaration, causing
 # it to flag the correct header as unused everywhere, so ignore those.
@@ -285,6 +293,10 @@ class ClangdClient:
 
     async def get_unused_includes(self, filename: str) -> List[str]:
         """Returns a list of unused includes for a filename"""
+
+        if filename in UNUSED_INCLUDE_FILENAME_SKIP_LIST:
+            logging.info(f"Skipping filename when getting unused includes: {filename}")
+            return []
 
         unused_includes = []
         diagnostics = []

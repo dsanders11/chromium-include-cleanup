@@ -320,7 +320,10 @@ class ClangdClient:
                 pass
             finally:
                 # Cleanup the subprocess
-                self._process.terminate()
+                try:
+                    self._process.terminate()
+                except ProcessLookupError:
+                    pass
                 await self._process.wait()
                 self._process = None
 

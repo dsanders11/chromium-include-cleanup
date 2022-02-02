@@ -149,12 +149,9 @@ async def main():
 
     try:
         csv_writer = csv.writer(sys.stdout)
-        progress_output = tqdm(total=len(filenames), unit="file")
         await clangd_client.start()
 
-        with logging_redirect_tqdm():
-            progress_output.display()
-
+        with logging_redirect_tqdm(), tqdm(total=len(filenames), unit="file") as progress_output:
             # Incrementally output the unused edges so that it doesn't need to
             # wait for hours before any output happens, when something could crash
             async for unused_edge in find_unused_edges(
@@ -165,7 +162,6 @@ async def main():
             ):
                 csv_writer.writerow(unused_edge)
     finally:
-        progress_output.close()
         await clangd_client.exit()
 
     return 0

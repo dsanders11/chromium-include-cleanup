@@ -36,6 +36,10 @@ UNUSED_EDGE_IGNORE_LIST = (
 )
 
 
+class ClangdCrashed(Exception):
+    pass
+
+
 class AsyncSendLspClient(lsp.Client):
     def _ensure_send_buf_is_queue(self):
         if not isinstance(self._send_buf, asyncio.Queue):
@@ -85,44 +89,60 @@ class ClangdClient:
         self._messages = []
         self._new_messages = asyncio.Queue()
         self._notification_queues = []
+        self._process_gone = asyncio.Event()
 
     async def _send_stdin(self):
-        while self._process:
-            message = await self.lsp_client.send()
-            self._process.stdin.write(message)
-            await self._process.stdin.drain()
+        try:
+            while self._process:
+                message = await self.lsp_client.send()
+                self._process.stdin.write(message)
+                await self._process.stdin.drain()
 
-            # Log the sent message for debugging purposes
-            self.logger.debug(message.decode("utf8").rstrip())
+                # Log the sent message for debugging purposes
+                self.logger.debug(message.decode("utf8").rstrip())
+        except asyncio.CancelledError:
+            pass
+
+        self._process_gone.set()
 
     async def _process_stdout(self):
-        while self._process:
-            data = await self._process.stdout.read(1024)
-            if data == b"":  # EOF
-                break
+        try:
+            while self._process:
+                data = await self._process.stdout.read(1024)
+                if data == b"":  # EOF
+                    break
 
-            # Parse the output and enqueue it
-            for event in self.lsp_client.recv(data):
-                if isinstance(event, lsp.ServerNotification):
-                    # If a notification comes in, tell anyone listening
-                    for queue in self._notification_queues:
-                        queue.put_nowait(event)
-                else:
-                    self._new_messages.put_nowait(event)
-                    self._try_default_reply(event)
+                # Parse the output and enqueue it
+                for event in self.lsp_client.recv(data):
+                    if isinstance(event, lsp.ServerNotification):
+                        # If a notification comes in, tell anyone listening
+                        for queue in self._notification_queues:
+                            queue.put_nowait(event)
+                    else:
+                        self._new_messages.put_nowait(event)
+                        self._try_default_reply(event)
 
-            # TODO - Log the output for debugging purposes
-            # How best to do this without getting too into
-            # the protocol details?
+                # TODO - Log the output for debugging purposes
+                # How best to do this without getting too into
+                # the protocol details?
+        except asyncio.CancelledError:
+            pass
+
+        self._process_gone.set()
 
     async def _log_stderr(self):
-        while self._process:
-            line = await self._process.stderr.readline()
-            if line == b"":  # EOF
-                break
+        try:
+            while self._process:
+                line = await self._process.stderr.readline()
+                if line == b"":  # EOF
+                    break
 
-            # Log the output for debugging purposes
-            self.logger.debug(line.decode("utf8").rstrip())
+                # Log the output for debugging purposes
+                self.logger.debug(line.decode("utf8").rstrip())
+        except asyncio.CancelledError:
+            pass
+
+        self._process_gone.set()
 
     async def start(self):
         args = ["--enable-config", "--background-index=false", f"-j={get_worker_count()}"]
@@ -141,9 +161,7 @@ class ClangdClient:
 
         # Create concurrently running tasks for sending input to clangd, and for processing clangd's output
         self._concurrent_tasks = asyncio.gather(
-            self._send_stdin(),
-            self._process_stdout(),
-            self._log_stderr(),
+            self._send_stdin(), self._process_stdout(), self._log_stderr(), return_exceptions=True
         )
 
         await self._wait_for_message_of_type(lsp.Initialized)
@@ -175,6 +193,16 @@ class ClangdClient:
             else:
                 self._messages.append(message)
 
+    async def _wrap_coro(self, coro):
+        process_gone_task = asyncio.create_task(self._process_gone.wait())
+        task = asyncio.create_task(coro)
+        done, _ = await asyncio.wait({task, process_gone_task}, return_when=asyncio.FIRST_COMPLETED)
+
+        if process_gone_task in done:
+            raise ClangdCrashed()
+
+        return task.result()
+
     @contextlib.asynccontextmanager
     async def listen_for_notifications(self, cancellation_token=None):
         queue = asyncio.Queue()
@@ -185,12 +213,12 @@ class ClangdClient:
             cancellation_token_task = asyncio.create_task(cancellation_token.wait())
 
             while not cancellation_token.is_set():
-                queue_task = asyncio.create_task(queue.get())
+                queue_task = asyncio.create_task(self._wrap_coro(queue.get()))
                 done, _ = await asyncio.wait(
                     {queue_task, cancellation_token_task}, return_when=asyncio.FIRST_COMPLETED
                 )
 
-                if cancellation_token in done:
+                if cancellation_token_task in done:
                     break
                 else:
                     yield queue_task.result()
@@ -278,19 +306,26 @@ class ClangdClient:
         return unused_includes
 
     async def exit(self):
-        try:
-            self.lsp_client.shutdown()
-            await self._wait_for_message_of_type(lsp.Shutdown, timeout=None)
-            self.lsp_client.exit()
-        except Exception:
-            self._process.terminate()
-        finally:
-            # Cleanup the subprocess
-            await self._process.wait()
+        if self._process and not self._process_gone.is_set():
             try:
-                self._concurrent_tasks.cancel()
-                await self._concurrent_tasks
-            except asyncio.CancelledError:
-                pass
-            self._concurrent_tasks = None
-            self._process = None
+                if self._process.returncode is None:
+                    self.lsp_client.shutdown()
+                    shutdown_task = asyncio.create_task(self._wait_for_message_of_type(lsp.Shutdown, timeout=None))
+                    done, _ = await asyncio.wait(
+                        {shutdown_task, self._concurrent_tasks}, return_when=asyncio.FIRST_COMPLETED
+                    )
+                    if shutdown_task in done:
+                        self.lsp_client.exit()
+            except Exception:
+                self._process.terminate()
+            finally:
+                # Cleanup the subprocess
+                await self._process.wait()
+                self._process = None
+
+        try:
+            self._concurrent_tasks.cancel()
+            await self._concurrent_tasks
+        except asyncio.CancelledError:
+            pass
+        self._concurrent_tasks = None

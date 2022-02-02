@@ -16,7 +16,7 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 # TODO - Is this actually necessary?
 sys.path.insert(0, pathlib.Path(__file__).parent.resolve())
 
-from clangd_lsp import ClangdClient
+from clangd_lsp import ClangdClient, ClangdCrashed
 from include_analysis import parse_raw_include_analysis_output
 from utils import get_worker_count
 
@@ -54,30 +54,32 @@ async def find_unused_edges(
                         logging.error(
                             f"clangd returned an unused include not in the include analysis output: {unused_include}"
                         )
+            except ClangdCrashed:
+                raise
             except Exception:
                 logging.exception(f"Skipping file due to unexpected error: {filename}")
 
             if progress_callback:
                 progress_callback(filename)
 
-        unused_edges.put_nowait(None)
-
     worker_count = get_worker_count()
-    done_count = 0
 
     work = asyncio.gather(*[worker() for _ in range(worker_count)])
 
-    while done_count < worker_count:
-        result = await unused_edges.get()
-        if result is not None:
-            yield result
-        else:
-            done_count += 1
+    try:
+        while not work.done():
+            unused_edge_task = asyncio.create_task(unused_edges.get())
+            done, _ = await asyncio.wait({unused_edge_task, work}, return_when=asyncio.FIRST_COMPLETED)
+            if unused_edge_task in done:
+                yield unused_edge_task.result()
+            else:
+                break
+    except asyncio.CancelledError:
+        pass
 
     await work
 
 
-# TODO - Ctrl+C doesn't cleanly exit
 # TODO - How to detect when compilation DB isn't found and clangd is falling back (won't work)
 async def main():
     parser = argparse.ArgumentParser(
@@ -147,25 +149,29 @@ async def main():
         args.compile_commands_dir.resolve() if args.compile_commands_dir else None,
     )
 
-    try:
-        csv_writer = csv.writer(sys.stdout)
+    csv_writer = csv.writer(sys.stdout)
+
+    with logging_redirect_tqdm(), tqdm(total=len(filenames), unit="file") as progress_output:
         await clangd_client.start()
 
-        with logging_redirect_tqdm(), tqdm(total=len(filenames), unit="file") as progress_output:
-            # Incrementally output the unused edges so that it doesn't need to
-            # wait for hours before any output happens, when something could crash
-            async for unused_edge in find_unused_edges(
-                clangd_client,
-                filenames,
-                include_analysis["esizes"],
-                progress_callback=lambda _: progress_output.update(),
-            ):
-                csv_writer.writerow(unused_edge)
-    finally:
+        # Incrementally output the unused edges so that it doesn't need to
+        # wait for hours before any output happens, when something could crash
+        async for unused_edge in find_unused_edges(
+            clangd_client,
+            filenames,
+            include_analysis["esizes"],
+            progress_callback=lambda _: progress_output.update(),
+        ):
+            csv_writer.writerow(unused_edge)
+
+        # This isn't really needed other than as a nicety
         await clangd_client.exit()
 
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(asyncio.run(main()))
+    try:
+        sys.exit(asyncio.run(main()))
+    except KeyboardInterrupt:
+        pass  # Don't show the user anything

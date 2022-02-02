@@ -242,7 +242,7 @@ class ClangdClient:
 
     def open_document(self, filename: str) -> lsp.TextDocumentItem:
         # TODO - How to mark header files as Objective-C++ or C? Does it matter?
-        if filename.endswith(".h") or filename.endswith(".cc"):
+        if filename.endswith(".h") or filename.endswith(".cc") or filename.endswith(".cpp"):
             language_id = "cpp"
         elif filename.endswith(".c"):
             language_id = "c"

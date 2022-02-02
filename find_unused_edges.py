@@ -23,18 +23,13 @@ from utils import get_worker_count
 
 async def find_unused_edges(
     clangd_client: ClangdClient,
-    filenames: List[str],
+    work_queue: asyncio.Queue,
     edge_sizes: Dict[str, Dict[str, int]],
     progress_callback: Callable[[str], None] = None,
 ):
-    """Finds unused edges according to clangd and returns a list of [includer, included, asize]"""
+    """Finds unused edges according to clangd and yields them as (includer, included, asize)"""
 
     unused_edges = asyncio.Queue()
-    work_queue = asyncio.Queue()
-
-    # Fill the queue with the filenames to process
-    for filename in filenames:
-        work_queue.put_nowait(filename)
 
     async def worker():
         while work_queue.qsize() > 0:
@@ -55,12 +50,13 @@ async def find_unused_edges(
                             f"clangd returned an unused include not in the include analysis output: {unused_include}"
                         )
             except ClangdCrashed:
+                logging.error(f"Skipping file due to clangd crash: {filename}")
                 raise
             except Exception:
                 logging.exception(f"Skipping file due to unexpected error: {filename}")
-
-            if progress_callback:
-                progress_callback(filename)
+            finally:
+                if progress_callback:
+                    progress_callback(filename)
 
     worker_count = get_worker_count()
 
@@ -73,6 +69,7 @@ async def find_unused_edges(
             if unused_edge_task in done:
                 yield unused_edge_task.result()
             else:
+                unused_edge_task.cancel()
                 break
     except asyncio.CancelledError:
         pass
@@ -139,6 +136,12 @@ async def main():
         if not filename_filter or (filename_filter and filename_filter.match(filename))
     ]
 
+    work_queue = asyncio.Queue()
+
+    # Fill the queue with the filenames to process
+    for filename in filenames:
+        work_queue.put_nowait(filename)
+
     # Strip off the path prefix for generated file includes so matching will work
     generated_file_prefix = re.compile(r"^(?:out/\w+/gen/)?(.*)$")
 
@@ -156,27 +159,39 @@ async def main():
         print("error: Must have a .clangd config with IncludeCleaner enabled")
         return 3
 
-    clangd_client = ClangdClient(
-        args.clangd_path,
-        root_path,
-        args.compile_commands_dir.resolve() if args.compile_commands_dir else None,
-    )
+    async def start_clangd_client():
+        clangd_client = ClangdClient(
+            args.clangd_path,
+            root_path,
+            args.compile_commands_dir.resolve() if args.compile_commands_dir else None,
+        )
+        await clangd_client.start()
+
+        return clangd_client
 
     csv_writer = csv.writer(sys.stdout)
 
-    with logging_redirect_tqdm(), tqdm(total=len(filenames), unit="file") as progress_output:
-        await clangd_client.start()
+    with logging_redirect_tqdm(), tqdm(total=work_queue.qsize(), unit="file") as progress_output:
+        clangd_client = await start_clangd_client()
 
         try:
-            # Incrementally output the unused edges so that it doesn't need to
-            # wait for hours before any output happens, when something could crash
-            async for unused_edge in find_unused_edges(
-                clangd_client,
-                filenames,
-                edge_sizes,
-                progress_callback=lambda _: progress_output.update(),
-            ):
-                csv_writer.writerow(unused_edge)
+            while work_queue.qsize() > 0:
+                try:
+                    # Incrementally output the unused edges so that it doesn't need to
+                    # wait for hours before any output happens, when something could crash
+                    async for unused_edge in find_unused_edges(
+                        clangd_client,
+                        work_queue,
+                        edge_sizes,
+                        progress_callback=lambda _: progress_output.update(),
+                    ):
+                        csv_writer.writerow(unused_edge)
+                except ClangdCrashed:
+                    # Make sure the old client is cleaned up
+                    await clangd_client.exit()
+
+                    # Start a new one and continue
+                    clangd_client = await start_clangd_client()
         finally:
             await clangd_client.exit()
 

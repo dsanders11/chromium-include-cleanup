@@ -199,7 +199,10 @@ class ClangdClient:
         done, _ = await asyncio.wait({task, process_gone_task}, return_when=asyncio.FIRST_COMPLETED)
 
         if process_gone_task in done:
+            task.cancel()
             raise ClangdCrashed()
+        else:
+            process_gone_task.cancel()
 
         return task.result()
 
@@ -212,16 +215,20 @@ class ClangdClient:
         async def get_notifications():
             cancellation_token_task = asyncio.create_task(cancellation_token.wait())
 
-            while not cancellation_token.is_set():
-                queue_task = asyncio.create_task(self._wrap_coro(queue.get()))
-                done, _ = await asyncio.wait(
-                    {queue_task, cancellation_token_task}, return_when=asyncio.FIRST_COMPLETED
-                )
+            try:
+                while not cancellation_token.is_set():
+                    queue_task = asyncio.create_task(self._wrap_coro(queue.get()))
+                    done, _ = await asyncio.wait(
+                        {queue_task, cancellation_token_task}, return_when=asyncio.FIRST_COMPLETED
+                    )
 
-                if cancellation_token_task in done:
-                    break
-                else:
-                    yield queue_task.result()
+                    if cancellation_token_task in done:
+                        queue_task.cancel()
+                        break
+                    else:
+                        yield queue_task.result()
+            finally:
+                cancellation_token_task.cancel()
 
         self._notification_queues.append(queue)
         yield get_notifications()
@@ -316,6 +323,8 @@ class ClangdClient:
                     )
                     if shutdown_task in done:
                         self.lsp_client.exit()
+                    else:
+                        shutdown_task.cancel()
             except Exception:
                 pass
             finally:

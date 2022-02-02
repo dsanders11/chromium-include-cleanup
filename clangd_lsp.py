@@ -12,7 +12,7 @@ from sansio_lsp_client.structs import JSONDict, Request
 
 from utils import get_worker_count
 
-INCLUDE_REGEX = re.compile(r"#include [\"<](.*)[\">]")
+INCLUDE_REGEX = re.compile(r"\s*#include [\"<](.*)[\">]")
 
 # This is a list of known filenames where clangd produces a false
 # positive when suggesting unused includes to remove. Usually these

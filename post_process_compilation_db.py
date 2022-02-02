@@ -4,19 +4,29 @@ import argparse
 import json
 import sys
 
+# TODO - Is this flag the same on Windows?
+TRACE_INCLUDES_FLAG = "-H"
+
 
 def post_process_compilation_database(compilation_database: list):
     """
     Post-process the compilation database
 
-    For the moment all this does is filter out native client compilation entries
-    for filenames so that clangd will see the normal compilation for this system
+    This filters out native client compilation entries for filenames so that clangd
+    will see the normal compilation for this system, and also strips out the trace
+    includes flag out of the compile command so that verbose output from clangd
+    won't be dominated by the includes tracing.
 
     """
     return [
-        compile_command
-        for compile_command in compilation_database
-        if "native_client" not in compile_command["command"]
+        {
+            **entry,
+            "command": " ".join(entry["command"].split(f" {TRACE_INCLUDES_FLAG} "))
+            if f" {TRACE_INCLUDES_FLAG} " in entry["command"]
+            else entry["command"],
+        }
+        for entry in compilation_database
+        if "native_client" not in entry["command"]
     ]
 
 

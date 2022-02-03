@@ -49,6 +49,9 @@ UNUSED_EDGE_IGNORE_LIST = (
     # TODO - Keep populating this list
 )
 
+# TODO - Bit hackish, but add to the LSP capabilities here, only extension point we have
+lsp.client.CAPABILITIES["textDocument"]["publishDiagnostics"]["codeActionsInline"] = True
+
 
 class ClangdCrashed(Exception):
     pass

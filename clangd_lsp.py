@@ -19,6 +19,7 @@ INCLUDE_REGEX = re.compile(r"\s*#include [\"<](.*)[\">]")
 # will appear to clangd to be unused, but are meant to be included.
 UNUSED_INCLUDE_FILENAME_SKIP_LIST = (
     "base/trace_event/base_tracing.h",
+    "mojo/public/cpp/system/core.h",
     # TODO - Keep populating this list
 )
 
@@ -31,10 +32,14 @@ UNUSED_INCLUDE_IGNORE_LIST = (
     "base/bind.h",
     "base/callback.h",
     "base/compiler_specific.h",
+    "base/hash/md5.h",
     "base/strings/string_piece.h",
     "base/trace_event/base_tracing.h",
     "build/build_config.h",
+    "content/browser/web_contents/web_contents_impl.h",
+    "extensions/renderer/extension_frame_helper.h",
     "mojo/public/cpp/bindings/pending_receiver.h",
+    "mojo/public/cpp/system/core.h",
     # TODO - Keep populating this list
 )
 
@@ -46,6 +51,12 @@ UNUSED_EDGE_IGNORE_LIST = (
         "third_party/blink/renderer/platform/wtf/allocator/allocator.h",
         "base/allocator/partition_allocator/partition_alloc.h",
     ),
+    (
+        "third_party/blink/renderer/core/probe/core_probes.h",
+        "third_party/blink/renderer/core/core_probes_inl.h",
+    ),
+    ("base/numerics/safe_math_shared_impl.h", "base/numerics/safe_math_clang_gcc_impl.h"),
+    ("services/network/public/cpp/url_request_mojom_traits.h", "services/network/public/cpp/resource_request.h"),
     # TODO - Keep populating this list
 )
 

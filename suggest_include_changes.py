@@ -161,11 +161,14 @@ async def main():
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
-    # Filter out some files we know we don't want to process, like the system headers, and *.inc files
+    # Filter out some files we know we don't want to process, like the system headers, and non-source files
     filenames = [
         filename
         for filename in include_analysis["files"]
-        if not re.match(r"^(?:buildtools|build)/", filename) and not filename.endswith(".inc")
+        if not re.match(r"^(?:buildtools|build)/", filename)
+        and not filename.endswith(".sigs")
+        and not filename.endswith(".def")
+        and not filename.endswith(".inc")
     ]
 
     # Further filter the filenames if a filter was provided, so not all files are processed

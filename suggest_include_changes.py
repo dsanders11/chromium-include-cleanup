@@ -3,11 +3,12 @@
 import argparse
 import asyncio
 import csv
+import enum
 import logging
 import pathlib
 import re
 import sys
-from typing import AsyncIterator, Callable, Dict, Tuple
+from typing import AsyncIterator, Callable, Dict, Optional, Tuple
 
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -17,38 +18,68 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 sys.path.insert(0, pathlib.Path(__file__).parent.resolve())
 
 from clangd_lsp import ClangdClient, ClangdCrashed
-from include_analysis import parse_raw_include_analysis_output
+from include_analysis import ParseError, parse_raw_include_analysis_output
 from utils import get_worker_count
 
 
-async def find_unused_edges(
+class IncludeChange(enum.Enum):
+    ADD = "add"
+    REMOVE = "remove"
+
+
+async def suggest_include_changes(
     clangd_client: ClangdClient,
     work_queue: asyncio.Queue,
-    edge_sizes: Dict[str, Dict[str, int]],
+    edge_sizes: Dict[str, Dict[str, int]] = None,
     progress_callback: Callable[[str], None] = None,
-) -> AsyncIterator[Tuple[str, str, int]]:
-    """Finds unused edges according to clangd and yields them as (includer, included, asize)"""
+) -> AsyncIterator[Tuple[IncludeChange, str, str, Optional[int]]]:
+    """Suggest includes to add or remove according to clangd and yield them as (change, includer, included, [size])"""
 
-    unused_edges = asyncio.Queue()
+    suggested_changes: asyncio.Queue[Tuple[IncludeChange, str, str, Optional[int]]] = asyncio.Queue()
 
     async def worker():
         while work_queue.qsize() > 0:
             filename = work_queue.get_nowait()
 
             try:
-                for unused_include in await clangd_client.get_unused_includes(filename):
-                    try:
-                        unused_edges.put_nowait(
-                            (
-                                filename,
-                                unused_include,
-                                edge_sizes[filename][unused_include],
+                add, remove = await clangd_client.get_include_suggestions(filename)
+
+                for include in add:
+                    # TODO - Some metric for how important they are to add, if there
+                    #        is one? Maybe something like the ratio of occurrences to
+                    #        direct includes, suggesting it's used a lot, but has lots
+                    #        of missing includes? That metric wouldn't really work well
+                    #        since leaf headers of commonly included headers would end
+                    #        up with a high ratio, despite not really being important to
+                    #        add anywhere. Maybe there's no metric here and instead an
+                    #        analysis is done at the end to rank headers by how many
+                    #        suggested includes there are for that file.
+                    suggested_changes.put_nowait(
+                        (
+                            IncludeChange.ADD,
+                            filename,
+                            include,
+                        )
+                    )
+
+                for include in remove:
+                    edge_size = None
+
+                    if edge_sizes:
+                        try:
+                            edge_size = edge_sizes[filename][include]
+                        except KeyError:
+                            logging.error(
+                                f"clangd returned an unused include not in the include analysis output: {include}"
                             )
-                        )
-                    except KeyError:
-                        logging.error(
-                            f"clangd returned an unused include not in the include analysis output: {unused_include}"
-                        )
+
+                    change = (
+                        IncludeChange.REMOVE,
+                        filename,
+                        include,
+                    )
+
+                    suggested_changes.put_nowait(change if edge_size is None else (*change, edge_size))
             except ClangdCrashed:
                 logging.error(f"Skipping file due to clangd crash: {filename}")
                 raise
@@ -65,13 +96,13 @@ async def find_unused_edges(
     work = asyncio.gather(*[worker() for _ in range(worker_count)])
 
     try:
-        while not work.done() or unused_edges.qsize() > 0:
-            unused_edge_task = asyncio.create_task(unused_edges.get())
-            done, _ = await asyncio.wait({unused_edge_task, work}, return_when=asyncio.FIRST_COMPLETED)
-            if unused_edge_task in done:
-                yield unused_edge_task.result()
+        while not work.done() or suggested_changes.qsize() > 0:
+            suggested_include_task = asyncio.create_task(suggested_changes.get())
+            done, _ = await asyncio.wait({suggested_include_task, work}, return_when=asyncio.FIRST_COMPLETED)
+            if suggested_include_task in done:
+                yield suggested_include_task.result()
             else:
-                unused_edge_task.cancel()
+                suggested_include_task.cancel()
                 break
     except asyncio.CancelledError:
         pass
@@ -82,7 +113,7 @@ async def find_unused_edges(
 # TODO - How to detect when compilation DB isn't found and clangd is falling back (won't work)
 async def main():
     parser = argparse.ArgumentParser(
-        description="Find unused edges, guided by the JSON analysis data from analyze_includes.py"
+        description="Suggest includes to add or remove, guided by the JSON analysis data from analyze_includes.py"
     )
     parser.add_argument(
         "include_analysis_output",
@@ -102,6 +133,9 @@ async def main():
         "--compile-commands-dir", type=pathlib.Path, help="Specify a path to look for compile_commands.json."
     )
     parser.add_argument("--filename-filter", help="Regex to filter which files are analyzed.")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--add-only", action="store_true", default=False, help="Only output includes to add.")
+    group.add_argument("--remove-only", action="store_true", default=False, help="Only output includes to remove.")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
 
@@ -115,10 +149,13 @@ async def main():
         print("error: --compile-commands-dir must be a directory")
         return 1
 
-    include_analysis = parse_raw_include_analysis_output(args.include_analysis_output.read())
-
-    if not include_analysis:
-        print("error: Could not process include analysis output file")
+    try:
+        include_analysis = parse_raw_include_analysis_output(args.include_analysis_output.read())
+    except ParseError as e:
+        message = str(e)
+        print("error: Could not parse include analysis output file")
+        if message:
+            print(message)
         return 2
 
     if args.verbose:
@@ -179,15 +216,18 @@ async def main():
         try:
             while work_queue.qsize() > 0:
                 try:
-                    # Incrementally output the unused edges so that it doesn't need to
-                    # wait for hours before any output happens, when something could crash
-                    async for unused_edge in find_unused_edges(
+                    async for include_change in suggest_include_changes(
                         clangd_client,
                         work_queue,
                         edge_sizes,
                         progress_callback=lambda _: progress_output.update(),
                     ):
-                        csv_writer.writerow(unused_edge)
+                        if args.add_only and include_change[0] is IncludeChange.ADD:
+                            csv_writer.writerow(include_change[1:])
+                        elif args.remove_only and include_change[0] is IncludeChange.REMOVE:
+                            csv_writer.writerow(include_change[1:])
+                        elif not args.add_only and not args.remove_only:
+                            csv_writer.writerow((include_change[0].value, *include_change[1:]))
                 except ClangdCrashed:
                     # Make sure the old client is cleaned up
                     await clangd_client.exit()

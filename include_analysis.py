@@ -27,6 +27,10 @@ class IncludeAnalysisOutput(TypedDict):
     prevalence: Dict[str, int]
 
 
+class ParseError(Exception):
+    pass
+
+
 def parse_raw_include_analysis_output(output: str) -> Optional[IncludeAnalysisOutput]:
     """
     Parses the raw output JavaScript file from the include analysis script and expands it
@@ -40,9 +44,9 @@ def parse_raw_include_analysis_output(output: str) -> Optional[IncludeAnalysisOu
         if match:
             raw_output: RawIncludeAnalysisOutput = json.loads(match.group(1))
         else:
-            return None
-    except json.JSONDecodeError:
-        return None
+            raise ParseError()
+    except json.JSONDecodeError as e:
+        raise ParseError(str(e)) from e
 
     parsed_output: IncludeAnalysisOutput = {}  # type: ignore
 

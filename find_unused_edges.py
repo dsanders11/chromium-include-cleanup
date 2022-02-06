@@ -65,7 +65,7 @@ async def find_unused_edges(
     work = asyncio.gather(*[worker() for _ in range(worker_count)])
 
     try:
-        while not work.done():
+        while not work.done() or unused_edges.qsize() > 0:
             unused_edge_task = asyncio.create_task(unused_edges.get())
             done, _ = await asyncio.wait({unused_edge_task, work}, return_when=asyncio.FIRST_COMPLETED)
             if unused_edge_task in done:

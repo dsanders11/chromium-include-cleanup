@@ -61,7 +61,7 @@ UNUSED_EDGE_IGNORE_LIST = (
 )
 
 # TODO - Bit hackish, but add to the LSP capabilities here, only extension point we have
-lsp.client.CAPABILITIES["textDocument"]["publishDiagnostics"]["codeActionsInline"] = True
+lsp.client.CAPABILITIES["textDocument"]["publishDiagnostics"]["codeActionsInline"] = True  # type: ignore
 
 
 class ClangdCrashed(Exception):
@@ -96,7 +96,7 @@ class AsyncSendLspClient(lsp.Client):
         self._ensure_send_buf_is_queue()
         self._send_buf.put_nowait(_make_response(id=id, result=result, error=error))
 
-    async def send(self) -> bytes:
+    async def async_send(self) -> bytes:
         return await self._send_buf.get()
 
 
@@ -122,7 +122,7 @@ class ClangdClient:
     async def _send_stdin(self):
         try:
             while self._process:
-                message = await self.lsp_client.send()
+                message = await self.lsp_client.async_send()
                 self._process.stdin.write(message)
                 await self._process.stdin.drain()
 
@@ -330,17 +330,18 @@ class ClangdClient:
             assert diagnostic.range.start.line == diagnostic.range.end.line
             text = document_contents.splitlines()[diagnostic.range.start.line]
 
-            try:
-                included_filename = INCLUDE_REGEX.match(text).group(1)
-            except AttributeError:
-                logging.error(f"Couldn't match #include regex to diagnostic line: {text}")
-            else:
+            include_match = INCLUDE_REGEX.match(text)
+
+            if include_match:
+                included_filename = include_match.group(1)
                 ignore_edge = (filename, included_filename) in UNUSED_EDGE_IGNORE_LIST
                 ignore_include = included_filename in UNUSED_INCLUDE_IGNORE_LIST
 
                 # Cut down on noise by ignoring known false positives
                 if not ignore_edge and not ignore_include:
                     unused_includes.append(included_filename)
+            else:
+                logging.error(f"Couldn't match #include regex to diagnostic line: {text}")
 
         return unused_includes
 

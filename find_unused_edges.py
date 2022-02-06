@@ -7,7 +7,7 @@ import logging
 import pathlib
 import re
 import sys
-from typing import Callable, Dict, List, Tuple
+from typing import AsyncIterator, Callable, Dict, Tuple
 
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -26,7 +26,7 @@ async def find_unused_edges(
     work_queue: asyncio.Queue,
     edge_sizes: Dict[str, Dict[str, int]],
     progress_callback: Callable[[str], None] = None,
-):
+) -> AsyncIterator[Tuple[str, str, int]]:
     """Finds unused edges according to clangd and yields them as (includer, included, asize)"""
 
     unused_edges = asyncio.Queue()

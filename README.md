@@ -59,6 +59,13 @@ Another useful option is `--filename-filter=^base/`, which lets you filter the
 files which will be analyzed, which can speed things up considerably if it is
 limited to a subset of the codebase.
 
+## Performance
+
+For a full codebase run of the `suggest_include_changes.py` script on Ubuntu,
+it takes 12.5 hours on a 4 core, 8 thread machine. `clangd` is highly parallel
+though, and the script is configured to use all available logical CPUs, so it
+will scale well on beefier machines.
+
 ## Current Limitations
 
 Currently the `suggest_include_changes.py` script has problems with suggesting

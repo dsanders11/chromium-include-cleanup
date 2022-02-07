@@ -23,6 +23,12 @@ To use these scripts, you'll need:
   * The generated `compile_commands.json` should be post-processed with
     the `post_process_compilation_db.py` script for best results
 
+### Install Dependencies
+
+```
+$ pip install -r ~/chromium-include-cleanup/requirements.txt
+```
+
 ### Patching `clangd`
 
 To get suggestions for includes to add, `clangd` needs to be patched with

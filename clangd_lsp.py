@@ -160,6 +160,59 @@ class AsyncSendLspClient(lsp.Client):
         return await self._send_buf.get()
 
 
+def parse_includes_from_diagnostics(
+    filename: str, document: lsp.TextDocumentItem, diagnostics: List[ClangdDiagnostic]
+) -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
+    """Returns a tuple of (add, remove) includes"""
+
+    add_includes: List[str] = []
+    remove_includes: List[str] = []
+
+    # Parse include diagnostics
+    for diagnostic in diagnostics:
+        if diagnostic.code == "unused-includes":
+            if filename in UNUSED_INCLUDE_FILENAME_SKIP_LIST:
+                logging.info(f"Skipping filename when getting unused includes: {filename}")
+                continue
+
+            # Only need the line number, we don't expect multi-line includes
+            assert diagnostic.range.start.line == diagnostic.range.end.line
+            text = document.text.splitlines()[diagnostic.range.start.line]
+
+            include_match = INCLUDE_REGEX.match(text)
+
+            if include_match:
+                included_filename = include_match.group(2)
+                ignore_edge = (filename, included_filename) in UNUSED_EDGE_IGNORE_LIST
+                ignore_include = included_filename in UNUSED_INCLUDE_IGNORE_LIST
+
+                # Cut down on noise by ignoring known false positives
+                if not ignore_edge and not ignore_include:
+                    remove_includes.append(included_filename)
+            else:
+                logging.error(f"Couldn't match #include regex to diagnostic line: {text}")
+        elif diagnostic.code == "needed-includes":
+            assert diagnostic.codeActions
+            assert len(diagnostic.codeActions) == 1
+            assert diagnostic.codeActions[0].edit
+            assert diagnostic.codeActions[0].edit.changes
+            assert len(diagnostic.codeActions[0].edit.changes[document.uri]) == 1
+
+            text = diagnostic.codeActions[0].edit.changes[document.uri][0].newText
+            include_match = INCLUDE_REGEX.match(text)
+
+            if include_match:
+                included_filename = include_match.group(1).strip('"')
+
+                # Cut down on noise by ignoring known false positives
+                if included_filename not in ADD_INCLUDE_IGNORE_LIST:
+                    add_includes.append(included_filename)
+            else:
+                logging.error(f"Couldn't match #include regex to diagnostic line: {text}")
+
+    return (tuple(add_includes), tuple(remove_includes))
+
+
 # Partially based on sansio-lsp-client/tests/test_actual_langservers.py
 class ClangdClient:
     def __init__(self, clangd_path: str, root_path: pathlib.Path, compile_commands_dir: pathlib.Path = None):
@@ -372,63 +425,17 @@ class ClangdClient:
     async def get_include_suggestions(self, filename: str) -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
         """Returns a tuple of (add, remove) includes for a filename"""
 
-        add_includes: List[str] = []
-        remove_includes: List[str] = []
-        diagnostics = []
+        document: lsp.TextDocumentItem
+        notification: ClangdPublishDiagnostics
 
         # Open the document and wait for the diagnostics notification
         async with self.listen_for_notifications() as notifications:
             async with self.with_document(filename) as document:
-                document_contents = document.text
-
                 async for notification in notifications:
                     if isinstance(notification, ClangdPublishDiagnostics) and notification.uri == document.uri:
-                        diagnostics = notification.diagnostics
                         break
 
-        # Parse include diagnostics
-        for diagnostic in diagnostics:
-            if diagnostic.code == "unused-includes":
-                if filename in UNUSED_INCLUDE_FILENAME_SKIP_LIST:
-                    logging.info(f"Skipping filename when getting unused includes: {filename}")
-                    continue
-
-                # Only need the line number, we don't expect multi-line includes
-                assert diagnostic.range.start.line == diagnostic.range.end.line
-                text = document_contents.splitlines()[diagnostic.range.start.line]
-
-                include_match = INCLUDE_REGEX.match(text)
-
-                if include_match:
-                    included_filename = include_match.group(2)
-                    ignore_edge = (filename, included_filename) in UNUSED_EDGE_IGNORE_LIST
-                    ignore_include = included_filename in UNUSED_INCLUDE_IGNORE_LIST
-
-                    # Cut down on noise by ignoring known false positives
-                    if not ignore_edge and not ignore_include:
-                        remove_includes.append(included_filename)
-                else:
-                    logging.error(f"Couldn't match #include regex to diagnostic line: {text}")
-            elif diagnostic.code == "needed-includes":
-                assert diagnostic.codeActions
-                assert len(diagnostic.codeActions) == 1
-                assert diagnostic.codeActions[0].edit
-                assert diagnostic.codeActions[0].edit.changes
-                assert len(diagnostic.codeActions[0].edit.changes[document.uri]) == 1
-
-                text = diagnostic.codeActions[0].edit.changes[document.uri][0].newText
-                include_match = INCLUDE_REGEX.match(text)
-
-                if include_match:
-                    included_filename = include_match.group(1).strip('"')
-
-                    # Cut down on noise by ignoring known false positives
-                    if included_filename not in ADD_INCLUDE_IGNORE_LIST:
-                        add_includes.append(included_filename)
-                else:
-                    logging.error(f"Couldn't match #include regex to diagnostic line: {text}")
-
-        return (tuple(add_includes), tuple(remove_includes))
+        return parse_includes_from_diagnostics(filename, document, notification.diagnostics)
 
     async def exit(self):
         if self._process:

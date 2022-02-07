@@ -67,6 +67,11 @@ filename in the include analysis output, which could happen for includes
 inside third-party code which is including relative to itself, not the
 Chromium src root.
 
+When suggesting includes to add, `clangd` will sometimes suggest headers which
+are internal to the standard library, like `<__hash_table>`, rather than the
+public header. Unfortunately these cases can't be disambiguated by this script,
+since there's not enough information to work off of.
+
 ## Accuracy of Output
 
 These scripts rely on `clangd` and specifically the "IncludeCleaner" feature

@@ -377,9 +377,10 @@ class ClangdClient:
         diagnostics = []
 
         # Open the document and wait for the diagnostics notification
-        async with self.with_document(filename) as document:
-            document_contents = document.text
-            async with self.listen_for_notifications() as notifications:
+        async with self.listen_for_notifications() as notifications:
+            async with self.with_document(filename) as document:
+                document_contents = document.text
+
                 async for notification in notifications:
                     if isinstance(notification, ClangdPublishDiagnostics) and notification.uri == document.uri:
                         diagnostics = notification.diagnostics

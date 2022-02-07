@@ -50,7 +50,7 @@ UNUSED_INCLUDE_IGNORE_LIST = (
 # TODO - Investigate what (if any?) files are showing up as false
 #        positives, on initial viewing it appears that suggestions
 #        for includes to add may be producing fewer false positives.
-ADD_INCLUDE_IGNORE_LIST: Tuple[str] = ()
+ADD_INCLUDE_IGNORE_LIST: Tuple[str, ...] = ()
 
 UNUSED_EDGE_IGNORE_LIST = (
     ("base/memory/aligned_memory.h", "base/bits.h"),

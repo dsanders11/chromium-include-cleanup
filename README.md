@@ -12,8 +12,8 @@ Scripts to help guide cleanup of #include lines in the Chromium codebase
 To use these scripts, you'll need:
 
 * An [unstable snapshot release][clangd-releases] of `clangd` which has
-  "IncludeCleaner"
-  * During development, snapshot 20211205 was used
+  "IncludeCleaner", or a build of `clangd` from source with the patch in
+  this repository applied.
 * The full output of `include_analysis.py`, see
   [discussion on the mailing list][include-analysis] for how to generate it
 * A compilation database for `clangd` to use, which can be generated with

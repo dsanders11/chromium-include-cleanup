@@ -106,6 +106,7 @@ class ClangdDiagnostic(lsp.Diagnostic):
 
 
 class ClangdPublishDiagnostics(lsp.PublishDiagnostics):
+    version: Optional[int]
     diagnostics: List[ClangdDiagnostic]
 
 
@@ -421,6 +422,36 @@ class ClangdClient:
     async def with_document(self, filename: str):
         yield self.open_document(filename)
         self.close_document(filename)
+
+    def change_document(self, filename: str, version: int, text: str, want_diagnostics: Optional[bool] = None):
+        text_document = lsp.VersionedTextDocumentIdentifier(
+            uri=(self.root_path / filename).as_uri(),
+            version=version,
+        )
+        content_changes = [lsp.TextDocumentContentChangeEvent(text=text)]
+
+        # NOTE - The following is copied from sansio-lsp-client to add the wantDiagnostics property
+        assert self.lsp_client._state == lsp.ClientState.NORMAL
+
+        params = {
+            "textDocument": text_document.dict(),
+            "contentChanges": [evt.dict() for evt in content_changes],
+        }
+
+        if want_diagnostics is not None:
+            params["wantDiagnostics"] = want_diagnostics
+
+        self.lsp_client._send_notification(
+            method="textDocument/didChange",
+            params=params,
+        )
+
+    def save_document(self, filename: str):
+        self.lsp_client.did_save(
+            lsp.TextDocumentIdentifier(
+                uri=(self.root_path / filename).as_uri(),
+            )
+        )
 
     async def get_include_suggestions(self, filename: str) -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
         """Returns a tuple of (add, remove) includes for a filename"""

@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import base64
 import csv
 import enum
 import io
@@ -11,7 +12,6 @@ import pathlib
 import sys
 import urllib.parse
 import urllib.request
-import zipfile
 from typing import Dict, Tuple
 
 # Insert this script's directory into the path so it can import sibling modules
@@ -21,9 +21,8 @@ sys.path.insert(0, pathlib.Path(__file__).parent.resolve())
 from clangd_lsp import ClangdClient, ClangdPublishDiagnostics, parse_includes_from_diagnostics
 
 GERRIT_BASE_URL = "https://chromium-review.googlesource.com"
-CODE_OWNERS_URL = GERRIT_BASE_URL + "/changes/{change_list}/code_owners.status?limit=100"
-CHANGE_LIST_FILES_URL = GERRIT_BASE_URL + "/changes/chromium%2Fsrc~{change_list}/revisions/{revision}/files"
-FILE_ZIP_URL = CHANGE_LIST_FILES_URL + "/{filename}/download"
+CHANGE_FILES_ENDPOINT = GERRIT_BASE_URL + "/changes/chromium%2Fsrc~{change_list}/revisions/{revision}/files"
+GET_CONTENT_ENDPOINT = CHANGE_FILES_ENDPOINT + "/{filename}/content"
 
 
 class IncludeChange(enum.Enum):
@@ -31,34 +30,29 @@ class IncludeChange(enum.Enum):
     REMOVE = "remove"
 
 
-def download_and_extract_zip(url: str) -> bytes:
-    content = urllib.request.urlopen(url)
-    zip_file = zipfile.ZipFile(io.BytesIO(content.read()), "r")
-
-    return zip_file.read(zip_file.namelist()[0])
-
-
 def download_cl_files(change_list: int) -> Dict[str, str]:
     """Downloads all files in a CL and returns a dict of filename to file content"""
 
-    code_owners_content = urllib.request.urlopen(CODE_OWNERS_URL.format(change_list=change_list))
-    code_owners_content.readline()  # )]}\n
-    patch_set_number = json.loads(code_owners_content.read())["patch_set_number"]
-
-    cl_files_content = urllib.request.urlopen(
-        CHANGE_LIST_FILES_URL.format(change_list=change_list, revision=patch_set_number)
+    cl_files_response = urllib.request.urlopen(
+        CHANGE_FILES_ENDPOINT.format(change_list=change_list, revision="current")
     )
-    cl_files_content.readline()  # )]}\n
-    filenames = set(json.loads(cl_files_content.read()).keys())
+    cl_files_response.readline()  # )]}'
+    filenames = set(json.loads(cl_files_response.read()).keys())
     filenames.remove("/COMMIT_MSG")
 
     files = {}
 
     for filename in filenames:
-        files[filename] = download_and_extract_zip(
-            FILE_ZIP_URL.format(
-                change_list=change_list, revision=patch_set_number, filename=urllib.parse.quote(filename, safe="")
-            )
+        # Skip files which aren't source code
+        if not filename.endswith(".h") and not filename.endswith(".cc") and not filename.endswith(".mm"):
+            continue
+
+        files[filename] = base64.b64decode(
+            urllib.request.urlopen(
+                GET_CONTENT_ENDPOINT.format(
+                    change_list=change_list, revision="current", filename=urllib.parse.quote(filename, safe="")
+                )
+            ).read()
         )
 
     return files

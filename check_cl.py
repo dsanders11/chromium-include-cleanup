@@ -4,15 +4,13 @@ import argparse
 import asyncio
 import base64
 import csv
-import enum
-import io
 import json
 import logging
 import pathlib
 import sys
 import urllib.parse
 import urllib.request
-from typing import Dict, Tuple
+from typing import Dict, List, Mapping, Tuple
 
 # Insert this script's directory into the path so it can import sibling modules
 # TODO - Is this actually necessary?
@@ -25,12 +23,18 @@ CHANGE_FILES_ENDPOINT = GERRIT_BASE_URL + "/changes/chromium%2Fsrc~{change_list}
 GET_CONTENT_ENDPOINT = CHANGE_FILES_ENDPOINT + "/{filename}/content"
 
 
-class IncludeChange(enum.Enum):
-    ADD = "add"
-    REMOVE = "remove"
+# This script is fairly well parallelize with asyncio, except for HTTP requests,
+# and file operations on disk. The benefit of using libraries to make those async
+# may be minimal, shaving a few seconds per run. We can see from this timing of a
+# run on a 4C/8T system that it does decently well on parallelization while running
+#
+# real	0m20.103s
+# user	1m28.616s
+# sys	0m4.145s
 
 
-def download_cl_files(change_list: int) -> Dict[str, str]:
+# TODO - Consider using aiohttp to parallelize this
+def download_cl_files(change_list: int) -> Dict[str, bytes]:
     """Downloads all files in a CL and returns a dict of filename to file content"""
 
     cl_files_response = urllib.request.urlopen(
@@ -58,97 +62,76 @@ def download_cl_files(change_list: int) -> Dict[str, str]:
     return files
 
 
-async def check_cl(clangd_client: ClangdClient, change_list: int) -> Dict[str, Tuple[IncludeChange, str, str]]:
+async def check_cl(
+    clangd_client: ClangdClient, change_list: int
+) -> Mapping[str, Tuple[Tuple[str, ...], Tuple[str, ...]]]:
     """Check a CL and return any include suggestions which have changed as a result of the CL changes"""
 
+    # TODO - Add a backstop in case this is run on a CL with a huge number of files changed
     files = download_cl_files(change_list)
 
     initial_includes = {}
     cl_includes = {}
-    documents = {}
     original_file_contents = {}
 
-    # Get the initial includes for the files as they exist on disk
-    for filename in files:
-        async with clangd_client.listen_for_notifications() as notifications:
-            document = clangd_client.open_document(filename)
-            documents[filename] = document
-            original_file_contents[filename] = document.text
-
+    # Don't worry about limiting to a certain number of jobs at once, clangd will
+    # queue files itself, and since a CL won't have too many files, it's fine to
+    # just send everything to clangd and let it be queued there and let it work
+    async def get_diagnostics(filename: str, version: int = 1):
+        async with clangd_client.listen_for_notifications() as notifications, clangd_client.with_document(
+            filename
+        ) as document:
             async for notification in notifications:
                 if (
                     isinstance(notification, ClangdPublishDiagnostics)
                     and notification.uri == document.uri
-                    and notification.version == 1
+                    and notification.version == version
                 ):
-                    initial_includes[filename] = parse_includes_from_diagnostics(
-                        filename, document, notification.diagnostics
-                    )
-                    break
+                    includes = parse_includes_from_diagnostics(filename, document, notification.diagnostics)
+                    return filename, document, includes
+
+    # Get the initial includes for the files as they exist on HEAD
+    for filename, document, includes in await asyncio.gather(*[get_diagnostics(filename) for filename in files]):
+        original_file_contents[filename] = document.text
+        initial_includes[filename] = includes
 
     try:
-        # Now change the file content to the CL version and save the files
+        # Now change the file content on disk to the CL version
+        # TODO - Consider aiofiles, although performance impact is likely neglible
         for filename in files:
-            text = files[filename].decode("utf8")
-
             with open((clangd_client.root_path / filename), "w") as f:
-                f.write(text)
+                f.write(files[filename].decode("utf8"))
 
-            clangd_client.save_document(filename)
-
-            # Update the document text as well
-            documents[filename].text = text
-
-        # Get the new include suggestions
-        for filename in files:
-            document = documents[filename]
-
-            async with clangd_client.listen_for_notifications() as notifications:
-                # Don't actually change the file content, just use this to bump the version number and force diagnostics
-                clangd_client.change_document(filename, 3, documents[filename].text, want_diagnostics=True)
-
-                async for notification in notifications:
-                    if (
-                        isinstance(notification, ClangdPublishDiagnostics)
-                        and notification.uri == document.uri
-                        and notification.version == 3
-                    ):
-                        cl_includes[filename] = parse_includes_from_diagnostics(
-                            filename, document, notification.diagnostics
-                        )
-                        break
-
-        # Clean up documents
-        for filename in files:
-            if filename in documents:
-                clangd_client.close_document(filename)
-
-        final_includes = {}
-
-        # Compare initial includes to the CL version includes and see what changed
-        for filename in files:
-            final_add = []
-            final_remove = []
-
-            initial_add, initial_remove = initial_includes[filename]
-            cl_add, cl_remove = cl_includes[filename]
-
-            for add in cl_add:
-                if add not in initial_add:
-                    final_add.append(add)
-
-            for remove in cl_remove:
-                if remove not in initial_remove:
-                    final_remove.append(remove)
-
-            final_includes[filename] = (tuple(final_add), tuple(final_remove))
-
-        return final_includes
+        # Get the include suggestions for the files as they exist in the CL
+        for filename, document, includes in await asyncio.gather(*[get_diagnostics(filename) for filename in files]):
+            cl_includes[filename] = includes
     finally:
         # Always try to restore the file content
         for filename in original_file_contents:
             with open((clangd_client.root_path / filename), "w") as f:
                 f.write(original_file_contents[filename])
+
+    final_includes = {}
+
+    # Compare initial includes to the CL version includes and see what changed
+    for filename in files:
+        final_add: List[str] = []
+        final_remove: List[str] = []
+
+        initial_add, initial_remove = initial_includes[filename]
+        cl_add, cl_remove = cl_includes[filename]
+
+        for add in cl_add:
+            if add not in initial_add:
+                final_add.append(add)
+
+        for remove in cl_remove:
+            if remove not in initial_remove:
+                final_remove.append(remove)
+
+        final_includes[filename] = (tuple(final_add), tuple(final_remove))
+
+    return final_includes
 
 
 # TODO - How to detect when compilation DB isn't found and clangd is falling back (won't work)
@@ -204,6 +187,7 @@ async def main():
     clangd_client = await start_clangd_client()
 
     try:
+        # TODO - Consider retry logic on clangd crash
         include_warnings = await check_cl(clangd_client, args.change_list)
 
         for filename in include_warnings:

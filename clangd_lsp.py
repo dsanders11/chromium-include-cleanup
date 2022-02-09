@@ -41,7 +41,11 @@ UNUSED_INCLUDE_IGNORE_LIST = (
     "content/browser/web_contents/web_contents_impl.h",
     "extensions/renderer/extension_frame_helper.h",
     "mojo/public/cpp/bindings/pending_receiver.h",
+    "mojo/public/cpp/bindings/pending_remote.h",
+    "mojo/public/cpp/bindings/receiver.h",
+    "mojo/public/cpp/bindings/remote.h",
     "mojo/public/cpp/system/core.h",
+    "third_party/blink/renderer/platform/graphics/paint/paint_filter.h",
     # TODO - Keep populating this list
 )
 
@@ -53,6 +57,7 @@ UNUSED_INCLUDE_IGNORE_LIST = (
 ADD_INCLUDE_IGNORE_LIST: Tuple[str, ...] = ()
 
 UNUSED_EDGE_IGNORE_LIST = (
+    ("base/hash/md5_constexpr.h", "base/hash/md5_constexpr_internal.h"),
     ("base/memory/aligned_memory.h", "base/bits.h"),
     ("chrome/browser/ui/browser.h", "chrome/browser/ui/signin_view_controller.h"),
     ("ipc/ipc_message_macros.h", "base/task/common/task_annotator.h"),
@@ -66,6 +71,7 @@ UNUSED_EDGE_IGNORE_LIST = (
     ),
     ("base/numerics/safe_math_shared_impl.h", "base/numerics/safe_math_clang_gcc_impl.h"),
     ("services/network/public/cpp/url_request_mojom_traits.h", "services/network/public/cpp/resource_request.h"),
+    ("ui/gfx/image/image_skia_rep.h", "ui/gfx/image/image_skia_rep_default.h"),
     # TODO - Keep populating this list
 )
 

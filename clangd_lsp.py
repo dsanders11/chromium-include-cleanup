@@ -167,13 +167,16 @@ class AsyncSendLspClient(lsp.Client):
         return await self._send_buf.get()
 
 
+IncludeLine = Tuple[str, int]
+
+
 def parse_includes_from_diagnostics(
     filename: str, document: lsp.TextDocumentItem, diagnostics: List[ClangdDiagnostic]
-) -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
+) -> Tuple[Tuple[IncludeLine, ...], Tuple[IncludeLine, ...]]:
     """Returns a tuple of (add, remove) includes"""
 
-    add_includes: List[str] = []
-    remove_includes: List[str] = []
+    add_includes: List[IncludeLine] = []
+    remove_includes: List[IncludeLine] = []
 
     # Parse include diagnostics
     for diagnostic in diagnostics:
@@ -195,7 +198,7 @@ def parse_includes_from_diagnostics(
 
                 # Cut down on noise by ignoring known false positives
                 if not ignore_edge and not ignore_include:
-                    remove_includes.append(included_filename)
+                    remove_includes.append((included_filename, diagnostic.range.start.line))
             else:
                 logging.error(f"Couldn't match #include regex to diagnostic line: {text}")
         elif diagnostic.code == "needed-includes":
@@ -213,7 +216,7 @@ def parse_includes_from_diagnostics(
 
                 # Cut down on noise by ignoring known false positives
                 if included_filename not in ADD_INCLUDE_IGNORE_LIST:
-                    add_includes.append(included_filename)
+                    add_includes.append((included_filename, diagnostic.range.start.line))
             else:
                 logging.error(f"Couldn't match #include regex to diagnostic line: {text}")
 
@@ -273,6 +276,7 @@ class ClangdClient:
                 # TODO - Log the output for debugging purposes
                 # How best to do this without getting too into
                 # the protocol details?
+                self.logger.debug(data.decode("utf8").rstrip())
         except asyncio.CancelledError:
             pass
 
@@ -459,7 +463,9 @@ class ClangdClient:
             )
         )
 
-    async def get_include_suggestions(self, filename: str) -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
+    async def get_include_suggestions(
+        self, filename: str
+    ) -> Tuple[Tuple[IncludeLine, ...], Tuple[IncludeLine, ...]]:
         """Returns a tuple of (add, remove) includes for a filename"""
 
         document: lsp.TextDocumentItem

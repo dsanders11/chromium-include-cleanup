@@ -32,8 +32,12 @@ async def suggest_include_changes(
     work_queue: asyncio.Queue,
     edge_sizes: Dict[str, Dict[str, int]] = None,
     progress_callback: Callable[[str], None] = None,
-) -> AsyncIterator[Tuple[IncludeChange, str, str, Optional[int]]]:
-    """Suggest includes to add or remove according to clangd and yield them as (change, includer, included, [size])"""
+) -> AsyncIterator[Tuple[IncludeChange, int, str, str, Optional[int]]]:
+    """
+    Suggest includes to add or remove according to clangd and yield them
+
+    Yielded as (change, line_no, includer, included, [size])
+    """
 
     suggested_changes: asyncio.Queue[Tuple[IncludeChange, str, str, Optional[int]]] = asyncio.Queue()
 
@@ -44,7 +48,7 @@ async def suggest_include_changes(
             try:
                 add, remove = await clangd_client.get_include_suggestions(filename)
 
-                for include in add:
+                for (include, line) in add:
                     # TODO - Some metric for how important they are to add, if there
                     #        is one? Maybe something like the ratio of occurrences to
                     #        direct includes, suggesting it's used a lot, but has lots
@@ -57,12 +61,13 @@ async def suggest_include_changes(
                     suggested_changes.put_nowait(
                         (
                             IncludeChange.ADD,
+                            line,
                             filename,
                             include,
                         )
                     )
 
-                for include in remove:
+                for (include, line) in remove:
                     edge_size = None
 
                     if edge_sizes:
@@ -75,6 +80,7 @@ async def suggest_include_changes(
 
                     change = (
                         IncludeChange.REMOVE,
+                        line,
                         filename,
                         include,
                     )
@@ -219,18 +225,18 @@ async def main():
         try:
             while work_queue.qsize() > 0:
                 try:
-                    async for include_change in suggest_include_changes(
+                    async for change_type, *include_change in suggest_include_changes(
                         clangd_client,
                         work_queue,
                         edge_sizes,
                         progress_callback=lambda _: progress_output.update(),
                     ):
-                        if args.add_only and include_change[0] is IncludeChange.ADD:
-                            csv_writer.writerow(include_change[1:])
-                        elif args.remove_only and include_change[0] is IncludeChange.REMOVE:
-                            csv_writer.writerow(include_change[1:])
-                        elif not args.add_only and not args.remove_only:
-                            csv_writer.writerow((include_change[0].value, *include_change[1:]))
+                        if args.add_only and change_type is not IncludeChange.ADD:
+                            continue
+                        elif args.remove_only and change_type is not IncludeChange.REMOVE:
+                            continue
+
+                        csv_writer.writerow((change_type.value, *include_change))
                 except ClangdCrashed:
                     # Make sure the old client is cleaned up
                     await clangd_client.exit()

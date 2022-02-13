@@ -276,7 +276,6 @@ class ClangdClient:
                 # TODO - Log the output for debugging purposes
                 # How best to do this without getting too into
                 # the protocol details?
-                self.logger.debug(data.decode("utf8").rstrip())
         except asyncio.CancelledError:
             pass
 

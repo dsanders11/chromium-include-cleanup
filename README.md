@@ -10,6 +10,7 @@ Scripts to help guide cleanup of #include lines in the Chromium codebase
 * `post_process_compilation_db.py` - Post-process the clang compilation
   database for Chromium
 * `suggest_include_changes.py` - Suggests includes to add and remove
+* `update_edge_sizes.py` - Update edge sizes in include changes output
 
 ## Prerequisites
 

@@ -19,7 +19,7 @@ sys.path.insert(0, pathlib.Path(__file__).parent.resolve())
 from clangd_lsp import ClangdClient, ClangdCrashed
 from common import IncludeChange
 from include_analysis import ParseError, parse_raw_include_analysis_output
-from utils import get_worker_count
+from utils import get_edge_sizes, get_worker_count
 
 
 async def suggest_include_changes(
@@ -185,17 +185,7 @@ async def main():
     for filename in filenames:
         work_queue.put_nowait(filename)
 
-    # Strip off the path prefix for generated file includes so matching will work
-    generated_file_prefix = re.compile(r"^(?:out/\w+/gen/)?(.*)$")
-
-    edge_sizes = {
-        filename: {
-            generated_file_prefix.match(included).group(1): size
-            for included, size in include_analysis["esizes"][filename].items()
-        }
-        for filename in include_analysis["esizes"]
-    }
-
+    edge_sizes = get_edge_sizes(include_analysis)
     root_path = args.chromium_src.resolve()
 
     if not ClangdClient.validate_config(root_path):

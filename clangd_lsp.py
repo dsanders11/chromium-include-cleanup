@@ -462,9 +462,7 @@ class ClangdClient:
             )
         )
 
-    async def get_include_suggestions(
-        self, filename: str
-    ) -> Tuple[Tuple[IncludeLine, ...], Tuple[IncludeLine, ...]]:
+    async def get_include_suggestions(self, filename: str) -> Tuple[Tuple[IncludeLine, ...], Tuple[IncludeLine, ...]]:
         """Returns a tuple of (add, remove) includes for a filename"""
 
         document: lsp.TextDocumentItem

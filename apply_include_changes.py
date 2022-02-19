@@ -3,7 +3,6 @@
 import argparse
 import asyncio
 import csv
-import enum
 import logging
 import pathlib
 import re
@@ -15,20 +14,9 @@ from typing import Dict, List, Tuple
 # TODO - Is this actually necessary?
 sys.path.insert(0, pathlib.Path(__file__).parent.resolve())
 
+from common import IncludeChange
 
 INCLUDE_REGEX = re.compile(r"\s*#include ([\"<](.*)[\">])")
-
-
-class IncludeChange(enum.Enum):
-    ADD = "add"
-    REMOVE = "remove"
-
-    @classmethod
-    def from_value(cls, value):
-        for enum_value in cls:
-            if enum_value.value == value:
-                return enum_value
-
 
 Change = Tuple[IncludeChange, int, str]
 

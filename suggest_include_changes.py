@@ -3,7 +3,6 @@
 import argparse
 import asyncio
 import csv
-import enum
 import logging
 import pathlib
 import re
@@ -18,13 +17,9 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 sys.path.insert(0, pathlib.Path(__file__).parent.resolve())
 
 from clangd_lsp import ClangdClient, ClangdCrashed
+from common import IncludeChange
 from include_analysis import ParseError, parse_raw_include_analysis_output
 from utils import get_worker_count
-
-
-class IncludeChange(enum.Enum):
-    ADD = "add"
-    REMOVE = "remove"
 
 
 async def suggest_include_changes(

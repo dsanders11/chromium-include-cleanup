@@ -2,13 +2,13 @@
 
 import argparse
 import asyncio
-from collections import defaultdict
 import csv
 import enum
 import logging
 import pathlib
 import re
 import sys
+from collections import defaultdict
 from typing import Dict, List, Tuple
 
 # Insert this script's directory into the path so it can import sibling modules

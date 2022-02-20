@@ -137,6 +137,7 @@ async def main():
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--add-only", action="store_true", default=False, help="Only output includes to add.")
     group.add_argument("--remove-only", action="store_true", default=False, help="Only output includes to remove.")
+    parser.add_argument("--restart-clangd-after", default=350, help="Restart clangd every N files processed.")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
 
@@ -179,12 +180,6 @@ async def main():
         if not filename_filter or (filename_filter and filename_filter.match(filename))
     ]
 
-    work_queue = asyncio.Queue()
-
-    # Fill the queue with the filenames to process
-    for filename in filenames:
-        work_queue.put_nowait(filename)
-
     edge_sizes = get_edge_sizes(include_analysis)
     root_path = args.chromium_src.resolve()
 
@@ -204,32 +199,38 @@ async def main():
 
     csv_writer = csv.writer(sys.stdout)
 
-    with logging_redirect_tqdm(), tqdm(total=work_queue.qsize(), unit="file") as progress_output:
-        clangd_client = await start_clangd_client()
+    with logging_redirect_tqdm(), tqdm(total=len(filenames), unit="file") as progress_output:
+        work_queue = asyncio.Queue()
+        clangd_client: ClangdClient
 
-        try:
-            while work_queue.qsize() > 0:
-                try:
-                    async for change_type, *include_change in suggest_include_changes(
-                        clangd_client,
-                        work_queue,
-                        edge_sizes,
-                        progress_callback=lambda _: progress_output.update(),
-                    ):
-                        if args.add_only and change_type is not IncludeChange.ADD:
-                            continue
-                        elif args.remove_only and change_type is not IncludeChange.REMOVE:
-                            continue
+        # Process the files in chunks, restarting clangd inbetween. Performance seems to
+        # degrade with clangd over time as more files are processed. It's possibly a bug
+        # in this script, or just that clangd is building something up every file processed
+        while len(filenames) > 0 or work_queue.qsize() > 0:
+            # Fill the queue with the filenames to process
+            for _ in range(min(len(filenames), args.restart_clangd_after - work_queue.qsize())):
+                work_queue.put_nowait(filenames.pop(0))
 
-                        csv_writer.writerow((change_type.value, *include_change))
-                except ClangdCrashed:
-                    # Make sure the old client is cleaned up
-                    await clangd_client.exit()
+            try:
+                clangd_client = await start_clangd_client()
 
-                    # Start a new one and continue
-                    clangd_client = await start_clangd_client()
-        finally:
-            await clangd_client.exit()
+                async for change_type, *include_change in suggest_include_changes(
+                    clangd_client,
+                    work_queue,
+                    edge_sizes,
+                    progress_callback=lambda _: progress_output.update(),
+                ):
+                    if args.add_only and change_type is not IncludeChange.ADD:
+                        continue
+                    elif args.remove_only and change_type is not IncludeChange.REMOVE:
+                        continue
+
+                    csv_writer.writerow((change_type.value, *include_change))
+            except ClangdCrashed:
+                pass  # No special handling needed, a new clangd will be started
+            finally:
+                # Make sure the old client is cleaned up
+                await clangd_client.exit()
 
     return 0
 

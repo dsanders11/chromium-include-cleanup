@@ -108,6 +108,11 @@ Known situations in Chromium where `clangd` will produce false positives:
 * Umbrella headers
 * Certain forward declarations seem to be flagged incorrectly as the canonical
   location for a symbol, such as "base/callback_forward.h"
+* Forward declarations in the file being analyzed
+  * `clangd` won't consider an include unused even if forward declarations
+    exist which make it unnecessary
+  * `clangd` will still suggest an include ven if a foward declaration makes it
+    unnecessary
 
 ## Checking a CL (Proof-of-Concept)
 

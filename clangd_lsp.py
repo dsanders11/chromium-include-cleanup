@@ -57,19 +57,32 @@ UNUSED_INCLUDE_IGNORE_LIST = (
 ADD_INCLUDE_IGNORE_LIST: Tuple[str, ...] = ()
 
 UNUSED_EDGE_IGNORE_LIST = (
+    ("base/atomicops.h", "base/atomicops_internals_portable.h"),
     ("base/hash/md5_constexpr.h", "base/hash/md5_constexpr_internal.h"),
     ("base/memory/aligned_memory.h", "base/bits.h"),
+    ("base/numerics/safe_math_shared_impl.h", "base/numerics/safe_math_clang_gcc_impl.h"),
+    ("base/trace_event/typed_macros.h", "base/tracing/protos/chrome_track_event.pbzero.h"),
     ("chrome/browser/ui/browser.h", "chrome/browser/ui/signin_view_controller.h"),
     ("ipc/ipc_message_macros.h", "base/task/common/task_annotator.h"),
+    ("mojo/public/cpp/bindings/lib/serialization.h", "mojo/public/cpp/bindings/array_traits_stl.h"),
+    ("mojo/public/cpp/bindings/lib/serialization.h", "mojo/public/cpp/bindings/map_traits_stl.h"),
+    (
+        "third_party/blink/renderer/core/frame/web_feature.h",
+        "third_party/blink/public/mojom/web_feature/web_feature.mojom-blink.h",
+    ),
+    ("third_party/blink/renderer/core/page/page.h", "third_party/blink/public/mojom/page/page.mojom-blink.h"),
+    (
+        "third_party/blink/renderer/core/probe/core_probes.h",
+        "third_party/blink/renderer/core/core_probes_inl.h",
+    ),
     (
         "third_party/blink/renderer/platform/wtf/allocator/allocator.h",
         "base/allocator/partition_allocator/partition_alloc.h",
     ),
     (
-        "third_party/blink/renderer/core/probe/core_probes.h",
-        "third_party/blink/renderer/core/core_probes_inl.h",
+        "third_party/blink/renderer/platform/wtf/text/atomic_string.h",
+        "third_party/blink/renderer/platform/wtf/text/string_concatenate.h",
     ),
-    ("base/numerics/safe_math_shared_impl.h", "base/numerics/safe_math_clang_gcc_impl.h"),
     ("services/network/public/cpp/url_request_mojom_traits.h", "services/network/public/cpp/resource_request.h"),
     ("ui/gfx/image/image_skia_rep.h", "ui/gfx/image/image_skia_rep_default.h"),
     # TODO - Keep populating this list

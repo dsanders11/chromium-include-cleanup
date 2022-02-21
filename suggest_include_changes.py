@@ -137,7 +137,9 @@ async def main():
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--add-only", action="store_true", default=False, help="Only output includes to add.")
     group.add_argument("--remove-only", action="store_true", default=False, help="Only output includes to remove.")
-    parser.add_argument("--restart-clangd-after", default=350, help="Restart clangd every N files processed.")
+    parser.add_argument(
+        "--restart-clangd-after", type=int, default=350, help="Restart clangd every N files processed."
+    )
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
 

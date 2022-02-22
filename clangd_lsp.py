@@ -216,6 +216,8 @@ def parse_includes_from_diagnostics(
                 ignore_edge = (filename, included_filename) in UNUSED_EDGE_IGNORE_LIST
                 ignore_include = included_filename in UNUSED_INCLUDE_IGNORE_LIST
 
+                # TODO - Ignore unused suggestion if the include is for the associated header
+
                 # Cut down on noise by ignoring known false positives
                 if not ignore_edge and not ignore_include:
                     remove_includes.append((included_filename, diagnostic.range.start.line))

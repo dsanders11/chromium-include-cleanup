@@ -21,6 +21,7 @@ INCLUDE_REGEX = re.compile(r"\s*#include ([\"<](.*)[\">])")
 Change = Tuple[IncludeChange, int, str]
 
 
+# TODO - Refactor this to take filename and list of changes instead of file_changes
 def apply_changes(root_path: pathlib.Path, file_changes: Dict[str, List[Change]], save_changes=True):
     """Apply changes to files"""
 

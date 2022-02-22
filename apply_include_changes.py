@@ -89,13 +89,6 @@ async def main():
     parser.add_argument(
         "--chromium-src", type=pathlib.Path, help="Path to the Chromium source tree.", default=pathlib.Path(".")
     )
-    parser.add_argument("--filename-filter", help="Regex to filter which files have changes applied.")
-    parser.add_argument("--header-filter", help="Regex to filter which headers are included in the changes.")
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("--add-only", action="store_true", default=False, help="Only apply changes which add includes.")
-    group.add_argument(
-        "--remove-only", action="store_true", default=False, help="Only apply changes which remove includes."
-    )
     parser.add_argument("--max-count", type=int, help="Maximum number of changes to apply.")
     parser.add_argument(
         "--dry-run", action="store_true", default=False, help="Don't save files to disk, just try to apply them."
@@ -106,18 +99,6 @@ async def main():
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
-    try:
-        filename_filter = re.compile(args.filename_filter) if args.filename_filter else None
-    except Exception:
-        print("error: --filename-filter is not a valid regex")
-        return 1
-
-    try:
-        header_filter = re.compile(args.header_filter) if args.header_filter else None
-    except Exception:
-        print("error: --header-filter is not a valid regex")
-        return 1
-
     changes: Dict[str, List[Change]] = defaultdict(list)
     changes_count = 0
 
@@ -126,15 +107,6 @@ async def main():
 
         if change_type is None:
             logging.warning(f"Skipping unknown change type: {change_type_value}")
-            continue
-
-        if args.add_only and change_type is not IncludeChange.ADD:
-            continue
-        elif args.remove_only and change_type is not IncludeChange.REMOVE:
-            continue
-        elif filename_filter and not filename_filter.match(filename):
-            continue
-        elif header_filter and not header_filter.match(header):
             continue
 
         changes[filename].append((change_type, int(line), header))

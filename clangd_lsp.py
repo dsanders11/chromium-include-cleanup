@@ -16,85 +16,6 @@ from utils import get_worker_count
 
 INCLUDE_REGEX = re.compile(r"\s*#include ([\"<](.*)[\">])")
 
-# This is a list of known filenames to skip when checking for unused
-# includes. It's mostly a list of umbrella headers where the includes
-# will appear to clangd to be unused, but are meant to be included.
-UNUSED_INCLUDE_FILENAME_SKIP_LIST = (
-    "base/trace_event/base_tracing.h",
-    "mojo/public/cpp/system/core.h",
-    # TODO - Keep populating this list
-)
-
-# This is a list of known filenames where clangd produces a false
-# positive when suggesting as unused includes to remove. Usually these
-# are umbrella headers, or headers where clangd thinks the canonical
-# location for a symbol is actually in a forward declaration, causing
-# it to flag the correct header as unused everywhere, so ignore those.
-UNUSED_INCLUDE_IGNORE_LIST = (
-    "base/allocator/buildflags.h",
-    "base/bind.h",
-    "base/callback.h",
-    "base/clang_profiling_buildflags.h",
-    "base/compiler_specific.h",
-    "base/hash/md5.h",
-    "base/strings/string_piece.h",
-    "base/trace_event/base_tracing.h",
-    "build/build_config.h",
-    "build/chromeos_buildflags.h",
-    "chrome/browser/ui/browser.h",
-    "chrome/browser/ui/browser_list.h",
-    "content/browser/web_contents/web_contents_impl.h",
-    "extensions/renderer/extension_frame_helper.h",
-    "mojo/public/cpp/bindings/pending_receiver.h",
-    "mojo/public/cpp/bindings/pending_remote.h",
-    "mojo/public/cpp/bindings/receiver.h",
-    "mojo/public/cpp/bindings/remote.h",
-    "mojo/public/cpp/system/core.h",
-    "third_party/blink/renderer/platform/graphics/paint/paint_filter.h",
-    "ui/aura/window.h",
-    "v8/include/v8.h",
-    # TODO - Keep populating this list
-)
-
-# This is a list of known filenames where clangd produces a false
-# positive when suggesting as includes to add.
-# TODO - Investigate what (if any?) files are showing up as false
-#        positives, on initial viewing it appears that suggestions
-#        for includes to add may be producing fewer false positives.
-ADD_INCLUDE_IGNORE_LIST: Tuple[str, ...] = ()
-
-UNUSED_EDGE_IGNORE_LIST = (
-    ("base/atomicops.h", "base/atomicops_internals_portable.h"),
-    ("base/hash/md5_constexpr.h", "base/hash/md5_constexpr_internal.h"),
-    ("base/memory/aligned_memory.h", "base/bits.h"),
-    ("base/numerics/safe_math_shared_impl.h", "base/numerics/safe_math_clang_gcc_impl.h"),
-    ("base/trace_event/typed_macros.h", "base/tracing/protos/chrome_track_event.pbzero.h"),
-    ("chrome/browser/ui/browser.h", "chrome/browser/ui/signin_view_controller.h"),
-    ("ipc/ipc_message_macros.h", "base/task/common/task_annotator.h"),
-    ("mojo/public/cpp/bindings/lib/serialization.h", "mojo/public/cpp/bindings/array_traits_stl.h"),
-    ("mojo/public/cpp/bindings/lib/serialization.h", "mojo/public/cpp/bindings/map_traits_stl.h"),
-    (
-        "third_party/blink/renderer/core/frame/web_feature.h",
-        "third_party/blink/public/mojom/web_feature/web_feature.mojom-blink.h",
-    ),
-    ("third_party/blink/renderer/core/page/page.h", "third_party/blink/public/mojom/page/page.mojom-blink.h"),
-    (
-        "third_party/blink/renderer/core/probe/core_probes.h",
-        "third_party/blink/renderer/core/core_probes_inl.h",
-    ),
-    (
-        "third_party/blink/renderer/platform/wtf/allocator/allocator.h",
-        "base/allocator/partition_allocator/partition_alloc.h",
-    ),
-    (
-        "third_party/blink/renderer/platform/wtf/text/atomic_string.h",
-        "third_party/blink/renderer/platform/wtf/text/string_concatenate.h",
-    ),
-    ("services/network/public/cpp/url_request_mojom_traits.h", "services/network/public/cpp/resource_request.h"),
-    ("ui/gfx/image/image_skia_rep.h", "ui/gfx/image/image_skia_rep_default.h"),
-    # TODO - Keep populating this list
-)
-
 # TODO - Bit hackish, but add to the LSP capabilities here, only extension point we have
 lsp.client.CAPABILITIES["textDocument"]["publishDiagnostics"]["codeActionsInline"] = True  # type: ignore
 
@@ -201,10 +122,6 @@ def parse_includes_from_diagnostics(
     # Parse include diagnostics
     for diagnostic in diagnostics:
         if diagnostic.code == "unused-includes":
-            if filename in UNUSED_INCLUDE_FILENAME_SKIP_LIST:
-                logging.info(f"Skipping filename when getting unused includes: {filename}")
-                continue
-
             # Only need the line number, we don't expect multi-line includes
             assert diagnostic.range.start.line == diagnostic.range.end.line
             text = document.text.splitlines()[diagnostic.range.start.line]
@@ -212,15 +129,7 @@ def parse_includes_from_diagnostics(
             include_match = INCLUDE_REGEX.match(text)
 
             if include_match:
-                included_filename = include_match.group(2)
-                ignore_edge = (filename, included_filename) in UNUSED_EDGE_IGNORE_LIST
-                ignore_include = included_filename in UNUSED_INCLUDE_IGNORE_LIST
-
-                # TODO - Ignore unused suggestion if the include is for the associated header
-
-                # Cut down on noise by ignoring known false positives
-                if not ignore_edge and not ignore_include:
-                    remove_includes.append((included_filename, diagnostic.range.start.line))
+                remove_includes.append((include_match.group(2), diagnostic.range.start.line))
             else:
                 logging.error(f"Couldn't match #include regex to diagnostic line: {text}")
         elif diagnostic.code == "needed-includes":
@@ -234,11 +143,7 @@ def parse_includes_from_diagnostics(
             include_match = INCLUDE_REGEX.match(text)
 
             if include_match:
-                included_filename = include_match.group(1).strip('"')
-
-                # Cut down on noise by ignoring known false positives
-                if included_filename not in ADD_INCLUDE_IGNORE_LIST:
-                    add_includes.append((included_filename, diagnostic.range.start.line))
+                add_includes.append((include_match.group(1).strip('"'), diagnostic.range.start.line))
             else:
                 logging.error(f"Couldn't match #include regex to diagnostic line: {text}")
 

@@ -7,6 +7,7 @@ Scripts to help guide cleanup of #include lines in the Chromium codebase
   tree
 * `check_cl.py` - Proof-of-concept script to check if a CL should add or
   remove includes as a result of the changes being made
+* `filter_include_changes.py` - Filter include changes output
 * `post_process_compilation_db.py` - Post-process the clang compilation
   database for Chromium
 * `suggest_include_changes.py` - Suggests includes to add and remove

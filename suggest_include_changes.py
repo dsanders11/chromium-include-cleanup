@@ -134,9 +134,6 @@ async def main():
         "--compile-commands-dir", type=pathlib.Path, help="Specify a path to look for compile_commands.json."
     )
     parser.add_argument("--filename-filter", help="Regex to filter which files are analyzed.")
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("--add-only", action="store_true", default=False, help="Only output includes to add.")
-    group.add_argument("--remove-only", action="store_true", default=False, help="Only output includes to remove.")
     parser.add_argument(
         "--restart-clangd-after", type=int, default=350, help="Restart clangd every N files processed."
     )
@@ -224,11 +221,6 @@ async def main():
                     edge_sizes,
                     progress_callback=lambda _: progress_output.update(),
                 ):
-                    if args.add_only and change_type is not IncludeChange.ADD:
-                        continue
-                    elif args.remove_only and change_type is not IncludeChange.REMOVE:
-                        continue
-
                     csv_writer.writerow((change_type.value, *include_change))
             except ClangdCrashed:
                 pass  # No special handling needed, a new clangd will be started

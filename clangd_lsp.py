@@ -31,13 +31,18 @@ UNUSED_INCLUDE_FILENAME_SKIP_LIST = (
 # location for a symbol is actually in a forward declaration, causing
 # it to flag the correct header as unused everywhere, so ignore those.
 UNUSED_INCLUDE_IGNORE_LIST = (
+    "base/allocator/buildflags.h",
     "base/bind.h",
     "base/callback.h",
+    "base/clang_profiling_buildflags.h",
     "base/compiler_specific.h",
     "base/hash/md5.h",
     "base/strings/string_piece.h",
     "base/trace_event/base_tracing.h",
     "build/build_config.h",
+    "build/chromeos_buildflags.h",
+    "chrome/browser/ui/browser.h",
+    "chrome/browser/ui/browser_list.h",
     "content/browser/web_contents/web_contents_impl.h",
     "extensions/renderer/extension_frame_helper.h",
     "mojo/public/cpp/bindings/pending_receiver.h",
@@ -46,6 +51,8 @@ UNUSED_INCLUDE_IGNORE_LIST = (
     "mojo/public/cpp/bindings/remote.h",
     "mojo/public/cpp/system/core.h",
     "third_party/blink/renderer/platform/graphics/paint/paint_filter.h",
+    "ui/aura/window.h",
+    "v8/include/v8.h",
     # TODO - Keep populating this list
 )
 

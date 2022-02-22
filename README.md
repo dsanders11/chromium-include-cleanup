@@ -73,7 +73,7 @@ limited to a subset of the codebase.
 ## Performance
 
 For a full codebase run of the `suggest_include_changes.py` script on Ubuntu,
-it takes 12.5 hours on a 4 core, 8 thread machine. `clangd` is highly parallel
+it takes 7 hours on a 4 core, 8 thread machine. `clangd` is highly parallel
 though, and the script is configured to use all available logical CPUs, so it
 will scale well on beefier machines.
 

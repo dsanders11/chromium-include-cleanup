@@ -43,29 +43,54 @@ UNUSED_INCLUDE_IGNORE_LIST = (
     "base/hash/md5.h",
     "base/strings/string_piece.h",
     "base/trace_event/base_tracing.h",
+    "build/branding_buildflags.h",
     "build/build_config.h",
+    "build/chromecast_buildflags.h",
     "build/chromeos_buildflags.h",
     "chrome/browser/ui/browser.h",
     "chrome/browser/ui/browser_list.h",
+    "chrome/common/buildflags.h",
+    "components/safe_browsing/buildflags.h",
+    "components/signin/public/base/signin_buildflags.h",
     "content/browser/web_contents/web_contents_impl.h",
+    "extensions/buildflags/buildflags.h",
     "extensions/renderer/extension_frame_helper.h",
+    "media/media_buildflags.h",
     "mojo/public/cpp/bindings/pending_receiver.h",
     "mojo/public/cpp/bindings/pending_remote.h",
     "mojo/public/cpp/bindings/receiver.h",
     "mojo/public/cpp/bindings/remote.h",
     "mojo/public/cpp/system/core.h",
+    "ppapi/buildflags/buildflags.h",
+    "printing/buildflags/buildflags.h",
     "third_party/blink/renderer/platform/graphics/paint/paint_filter.h",
     "ui/aura/window.h",
+    "ui/gfx/image/image_skia_rep.h",
     "v8/include/v8.h",
     # TODO - Keep populating this list
 )
 
 # This is a list of known filenames where clangd produces a false
 # positive when suggesting as includes to add.
-# TODO - Investigate what (if any?) files are showing up as false
-#        positives, on initial viewing it appears that suggestions
-#        for includes to add may be producing fewer false positives.
-ADD_INCLUDE_IGNORE_LIST: Tuple[str, ...] = ()
+ADD_INCLUDE_IGNORE_LIST: Tuple[str, ...] = (
+    "absl/base/internal/inline_variable.h",
+    "absl/types/internal/optional.h",
+    "base/atomicops_internals_portable.h",
+    "base/bind_internal.h",
+    "base/callback_forward.h",
+    "base/callback_internal.h",
+    "base/hash/md5_constexpr_internal.h",
+    "base/metrics/histogram_macros_internal.h",
+    "base/numerics/safe_conversions_impl.h",
+    "base/numerics/safe_math_clang_gcc_impl.h",
+    "base/numerics/safe_math_shared_impl.h",
+    "base/strings/string_piece_forward.h",
+    "base/trace_event/trace_event_impl.h",
+    "ui/base/metadata/metadata_macros_internal.h",
+    "ui/gfx/image/image_skia_rep_default.h",
+    "v8-internal.h",
+    # TODO - Keep populating this list
+)
 
 UNUSED_EDGE_IGNORE_LIST = (
     ("base/atomicops.h", "base/atomicops_internals_portable.h"),

@@ -143,6 +143,7 @@ def parse_includes_from_diagnostics(
             include_match = INCLUDE_REGEX.match(text)
 
             if include_match:
+                # TODO - Alias things like: absl/types/optional.h -> third_party/abseil-cpp/absl/types/optional.h
                 add_includes.append((include_match.group(1).strip('"'), diagnostic.range.start.line))
             else:
                 logging.error(f"Couldn't match #include regex to diagnostic line: {text}")

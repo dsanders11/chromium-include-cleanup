@@ -161,9 +161,9 @@ def main():
     )
     parser.add_argument("--filename-filter", help="Regex to filter which files have changes outputted.")
     parser.add_argument("--header-filter", help="Regex to filter which headers are included in the changes.")
-    parser.add_argument("--filter-generated-files", type=bool, default=True, help="Filter out generated files.")
-    parser.add_argument("--filter-mojom-headers", type=bool, default=True, help="Filter out mojom headers.")
-    parser.add_argument("--filter-false-positives", type=bool, default=True, help="Filter out known false positives.")
+    parser.add_argument("--no-filter-generated-files", action="store_true", help="Filter out generated files.")
+    parser.add_argument("--no-filter-mojom-headers", action="store_true", help="Filter out mojom headers.")
+    parser.add_argument("--no-filter-false-positives", action="store_true", help="Filter out known false positives.")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--add-only", action="store_true", default=False, help="Only output includes to add.")
     group.add_argument("--remove-only", action="store_true", default=False, help="Only output includes to remove.")
@@ -200,9 +200,9 @@ def main():
             filename_filter=filename_filter,
             header_filter=header_filter,
             change_type_filter=change_type_filter,
-            filter_generated_files=args.filter_generated_files,
-            filter_mojom_headers=args.filter_mojom_headers,
-            filter_false_positives=args.filter_false_positives,
+            filter_generated_files=not args.no_filter_generated_files,
+            filter_mojom_headers=not args.no_filter_mojom_headers,
+            filter_false_positives=not args.no_filter_false_positives,
         ):
             csv_writer.writerow(change)
 

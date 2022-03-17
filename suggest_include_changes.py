@@ -137,6 +137,7 @@ async def main():
     parser.add_argument(
         "--restart-clangd-after", type=int, default=350, help="Restart clangd every N files processed."
     )
+    parser.add_argument("--include-dir", nargs="*", help="Include directory.")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
 
@@ -181,7 +182,7 @@ async def main():
         if not filename_filter or (filename_filter and filename_filter.match(filename))
     ]
 
-    edge_sizes = get_edge_sizes(include_analysis)
+    edge_sizes = get_edge_sizes(include_analysis, args.include_dir)
     root_path = args.chromium_src.resolve()
 
     if not ClangdClient.validate_config(root_path):

@@ -52,6 +52,7 @@ UNUSED_INCLUDE_IGNORE_LIST = (
     "chrome/common/buildflags.h",
     "components/safe_browsing/buildflags.h",
     "components/signin/public/base/signin_buildflags.h",
+    "content/browser/renderer_host/render_frame_host_impl.h",
     "content/browser/web_contents/web_contents_impl.h",
     "extensions/buildflags/buildflags.h",
     "extensions/renderer/extension_frame_helper.h",
@@ -99,6 +100,10 @@ UNUSED_EDGE_IGNORE_LIST = (
     ("base/numerics/safe_math_shared_impl.h", "base/numerics/safe_math_clang_gcc_impl.h"),
     ("base/trace_event/typed_macros.h", "base/tracing/protos/chrome_track_event.pbzero.h"),
     ("chrome/browser/ui/browser.h", "chrome/browser/ui/signin_view_controller.h"),
+    (
+        "components/download/public/common/download_item_rename_progress_update.h",
+        "components/enterprise/common/download_item_reroute_info.h",
+    ),
     ("ipc/ipc_message_macros.h", "base/task/common/task_annotator.h"),
     ("mojo/public/cpp/bindings/lib/serialization.h", "mojo/public/cpp/bindings/array_traits_stl.h"),
     ("mojo/public/cpp/bindings/lib/serialization.h", "mojo/public/cpp/bindings/map_traits_stl.h"),
@@ -114,6 +119,10 @@ UNUSED_EDGE_IGNORE_LIST = (
     (
         "third_party/blink/renderer/platform/wtf/allocator/allocator.h",
         "base/allocator/partition_allocator/partition_alloc.h",
+    ),
+    (
+        "third_party/blink/renderer/platform/wtf/hash_table.h",
+        "third_party/blink/renderer/platform/wtf/hash_iterators.h",
     ),
     (
         "third_party/blink/renderer/platform/wtf/text/atomic_string.h",

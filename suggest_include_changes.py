@@ -202,7 +202,7 @@ async def main():
 
     with logging_redirect_tqdm(), tqdm(total=len(filenames), unit="file") as progress_output:
         work_queue = asyncio.Queue()
-        clangd_client: ClangdClient
+        clangd_client: ClangdClient = None
 
         # Process the files in chunks, restarting clangd inbetween. Performance seems to
         # degrade with clangd over time as more files are processed. It's possibly a bug
@@ -226,7 +226,8 @@ async def main():
                 pass  # No special handling needed, a new clangd will be started
             finally:
                 # Make sure the old client is cleaned up
-                await clangd_client.exit()
+                if clangd_client:
+                    await clangd_client.exit()
 
     return 0
 

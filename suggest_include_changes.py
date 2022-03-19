@@ -137,7 +137,7 @@ async def main():
     parser.add_argument(
         "--restart-clangd-after", type=int, default=350, help="Restart clangd every N files processed."
     )
-    parser.add_argument("--include-dir", nargs="*", help="Include directory.")
+    parser.add_argument("--include-dir", action="append", help="Include directory.")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
 

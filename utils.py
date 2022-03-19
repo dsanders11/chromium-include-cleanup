@@ -19,6 +19,9 @@ def get_edge_sizes(include_analysis: IncludeAnalysisOutput, include_directories:
 
     edge_sizes = {}
 
+    if include_directories is None:
+        include_directories = []
+
     for filename in include_analysis["esizes"]:
         edge_sizes[filename] = {}
 

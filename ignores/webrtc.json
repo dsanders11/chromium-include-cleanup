@@ -53,7 +53,9 @@
   },
   "remove": {
     "filenames": [
-      "base/trace_event/base_tracing.h"
+      "base/trace_event/base_tracing.h",
+      "test/gmock.h",
+      "test/gtest.h"
     ],
     "headers": [
       "base/allocator/buildflags.h",
@@ -63,8 +65,12 @@
       "base/compiler_specific.h",
       "base/hash/md5.h",
       "base/strings/string_piece.h",
+      "rtc_base/numerics/running_statistics.h",
+      "rtc_base/trace_event.h",
       "test/gmock.h",
-      "test/gtest.h"
+      "test/gtest.h",
+      "third_party/libyuv/include/libyuv/convert.h",
+      "third_party/libyuv/include/libyuv/planar_functions.h"
     ],
     "edges": [
       [
@@ -94,6 +100,10 @@
       [
         "base/trace_event/typed_macros.h",
         "base/tracing/protos/chrome_track_event.pbzero.h"
+      ],
+      [
+        "rtc_base/numerics/sample_stats.h",
+        "api/numerics/samples_stats_counter.h"
       ]
     ]
   }

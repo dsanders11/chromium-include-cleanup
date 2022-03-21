@@ -1,4 +1,10 @@
 {
+  "skip": [
+    "modules/audio_coding/codecs/isac/audio_decoder_isac_t.h",
+    "modules/audio_coding/codecs/isac/audio_decoder_isac_t_impl.h",
+    "modules/audio_coding/codecs/isac/audio_encoder_isac_t.h",
+    "modules/audio_coding/codecs/isac/audio_encoder_isac_t_impl.h"
+  ],
   "add": {
     "headers": [
       "absl/base/internal/inline_variable.h",

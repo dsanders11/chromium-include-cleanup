@@ -4,6 +4,13 @@
   "description": "Include suggestions from clangd to ignore due to false-positives.",
   "type": "object",
   "properties": {
+    "skip": {
+      "description": "This is a list of filenames to skip entirely, for situations like when clangd infers a bad compile command",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "add": {
       "description": "Ignores for suggestions to add includes",
       "type": "object",

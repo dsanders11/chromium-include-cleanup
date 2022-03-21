@@ -27,6 +27,7 @@ class IgnoresSubConfiguration(BaseModel):
 
 
 class IgnoresConfiguration(BaseModel):
+    skip: List[str] = []
     add: IgnoresSubConfiguration = IgnoresSubConfiguration()
     remove: IgnoresSubConfiguration = IgnoresSubConfiguration()
 
@@ -72,6 +73,10 @@ def filter_changes(
 
         # Cut down on noise by using ignores
         if ignores:
+            # Some files have to be skipped because clangd infers a bad compilation command for them
+            if filename in ignores.skip:
+                continue
+
             if change_type is IncludeChange.REMOVE:
                 if filename in ignores.remove.filenames:
                     logging.info(f"Skipping filename for unused includes: {filename}")

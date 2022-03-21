@@ -26,14 +26,17 @@ def get_edge_sizes(include_analysis: IncludeAnalysisOutput, include_directories:
         edge_sizes[filename] = {}
 
         for include, size in include_analysis["esizes"][filename].items():
-            # If an include is in an include directory, strip that prefix
+            includes = [include]
+
+            # If an include is in an include directory, strip that prefix and add it to edge sizes for matching
             for include_directory in include_directories:
                 include_directory = include_directory if include_directory.endswith("/") else f"{include_directory}/"
                 if include.startswith(include_directory):
-                    include = include[len(include_directory) :]
+                    includes.append(include[len(include_directory) :])
                     break
 
-            include = generated_file_prefix.match(include).group(1)
-            edge_sizes[filename][include] = size
+            for include in includes:
+                include = generated_file_prefix.match(include).group(1)
+                edge_sizes[filename][include] = size
 
     return edge_sizes

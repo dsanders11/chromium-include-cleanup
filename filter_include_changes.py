@@ -55,6 +55,10 @@ def filter_changes(
         elif change_type_filter and change_type != change_type_filter:
             continue
 
+        # Filter out internal system headers
+        if header.startswith("<__"):
+            continue
+
         if filename_filter and not filename_filter.match(filename):
             continue
         elif header_filter and not header_filter.match(header):

@@ -1,0 +1,94 @@
+{
+  "add": {
+    "headers": [
+      "absl/base/internal/inline_variable.h",
+      "absl/flags/internal/flag.h",
+      "absl/types/internal/optional.h",
+      "absl/types/internal/variant.h",
+      "base/atomicops_internals_portable.h",
+      "base/bind_internal.h",
+      "base/callback_forward.h",
+      "base/callback_internal.h",
+      "base/hash/md5_constexpr_internal.h",
+      "base/metrics/histogram_macros_internal.h",
+      "base/numerics/safe_conversions_impl.h",
+      "base/numerics/safe_math_clang_gcc_impl.h",
+      "base/numerics/safe_math_shared_impl.h",
+      "base/strings/string_piece_forward.h",
+      "base/trace_event/trace_event_impl.h",
+      "gmock/gmock.h",
+      "gmock/gmock-actions.h",
+      "gmock/gmock-cardinalities.h",
+      "gmock/gmock-function-mocker.h",
+      "gmock/gmock-matchers.h",
+      "gmock/gmock-more-actions.h",
+      "gmock/gmock-more-matchers.h",
+      "gmock/gmock-nice-strict.h",
+      "gmock/gmock-spec-builders.h",
+      "gmock/internal/gmock-internal-utils.h",
+      "gmock/internal/gmock-pp.h",
+      "gtest/gtest.h",
+      "gtest/gtest-assertion-result.h",
+      "gtest/gtest-death-test.h",
+      "gtest/gtest-matchers.h",
+      "gtest/gtest-message.h",
+      "gtest/gtest-param-test.h",
+      "gtest/gtest-printers.h",
+      "gtest/gtest-test-part.h",
+      "gtest/gtest-typed-test.h",
+      "gtest/gtest_pred_impl.h",
+      "gtest/internal/gtest-death-test-internal.h",
+      "gtest/internal/gtest-internal.h",
+      "gtest/internal/gtest-param-util.h",
+      "gtest/internal/gtest-port.h",
+      "gtest/internal/gtest-type-util.h",
+      "rtc_base/synchronization/sequence_checker_internal.h"
+    ]
+  },
+  "remove": {
+    "filenames": [
+      "base/trace_event/base_tracing.h"
+    ],
+    "headers": [
+      "base/allocator/buildflags.h",
+      "base/bind.h",
+      "base/callback.h",
+      "base/clang_profiling_buildflags.h",
+      "base/compiler_specific.h",
+      "base/hash/md5.h",
+      "base/strings/string_piece.h",
+      "test/gmock.h",
+      "test/gtest.h"
+    ],
+    "edges": [
+      [
+        "base/allocator/partition_allocator/address_pool_manager.h",
+        "base/allocator/partition_allocator/address_pool_manager_bitmap.h"
+      ],
+      [
+        "base/atomicops.h",
+        "base/atomicops_internals_portable.h"
+      ],
+      [
+        "base/debug/crash_logging.h",
+        "base/strings/string_number_conversions.h"
+      ],
+      [
+        "base/hash/md5_constexpr.h",
+        "base/hash/md5_constexpr_internal.h"
+      ],
+      [
+        "base/memory/aligned_memory.h",
+        "base/bits.h"
+      ],
+      [
+        "base/numerics/safe_math_shared_impl.h",
+        "base/numerics/safe_math_clang_gcc_impl.h"
+      ],
+      [
+        "base/trace_event/typed_macros.h",
+        "base/tracing/protos/chrome_track_event.pbzero.h"
+      ]
+    ]
+  }
+}

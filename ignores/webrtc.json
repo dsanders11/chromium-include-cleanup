@@ -148,6 +148,10 @@
         "modules/rtp_rtcp/source/fec_private_tables_random.h"
       ],
       [
+        "net/dcsctp/timer/fake_timeout.h,rtc",
+        "base/containers/flat_set.h"
+      ],
+      [
         "rtc_base/numerics/sample_stats.h",
         "api/numerics/samples_stats_counter.h"
       ]

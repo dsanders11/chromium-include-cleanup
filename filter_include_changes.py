@@ -76,6 +76,7 @@ UNUSED_INCLUDE_IGNORE_LIST = (
 ADD_INCLUDE_IGNORE_LIST: Tuple[str, ...] = (
     "absl/base/internal/inline_variable.h",
     "absl/types/internal/optional.h",
+    "absl/types/optional.h",
     "base/atomicops_internals_portable.h",
     "base/bind_internal.h",
     "base/callback_forward.h",
@@ -94,7 +95,12 @@ ADD_INCLUDE_IGNORE_LIST: Tuple[str, ...] = (
 )
 
 UNUSED_EDGE_IGNORE_LIST = (
+    (
+        "base/allocator/partition_allocator/address_pool_manager.h",
+        "base/allocator/partition_allocator/address_pool_manager_bitmap.h",
+    ),
     ("base/atomicops.h", "base/atomicops_internals_portable.h"),
+    ("base/debug/crash_logging.h", "base/strings/string_number_conversions.h"),
     ("base/hash/md5_constexpr.h", "base/hash/md5_constexpr_internal.h"),
     ("base/memory/aligned_memory.h", "base/bits.h"),
     ("base/numerics/safe_math_shared_impl.h", "base/numerics/safe_math_clang_gcc_impl.h"),
@@ -105,6 +111,7 @@ UNUSED_EDGE_IGNORE_LIST = (
         "components/enterprise/common/download_item_reroute_info.h",
     ),
     ("ipc/ipc_message_macros.h", "base/task/common/task_annotator.h"),
+    ("media/base/ipc/media_param_traits.h", "media/base/ipc/media_param_traits_macros.h"),
     ("mojo/public/cpp/bindings/lib/serialization.h", "mojo/public/cpp/bindings/array_traits_stl.h"),
     ("mojo/public/cpp/bindings/lib/serialization.h", "mojo/public/cpp/bindings/map_traits_stl.h"),
     (
@@ -129,7 +136,9 @@ UNUSED_EDGE_IGNORE_LIST = (
         "third_party/blink/renderer/platform/wtf/text/string_concatenate.h",
     ),
     ("services/network/public/cpp/url_request_mojom_traits.h", "services/network/public/cpp/resource_request.h"),
+    ("skia/config/SkUserConfig.h", "skia/ext/skia_histogram.h"),
     ("ui/gfx/image/image_skia_rep.h", "ui/gfx/image/image_skia_rep_default.h"),
+    ("ui/gfx/image/image_skia_rep_default.h", "cc/paint/paint_op_buffer.h"),
     # TODO - Keep populating this list
 )
 

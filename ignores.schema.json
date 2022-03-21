@@ -34,9 +34,10 @@
           "type": "array",
           "items": {
             "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
             "items": {
-              "minItems": 2,
-              "maxItems": 2
+              "type": "string"
             }
           }
         }
@@ -65,9 +66,10 @@
           "type": "array",
           "items": {
             "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
             "items": {
-              "minItems": 2,
-              "maxItems": 2
+              "type": "string"
             }
           }
         }

@@ -3,10 +3,29 @@
     "modules/audio_coding/codecs/isac/audio_decoder_isac_t.h",
     "modules/audio_coding/codecs/isac/audio_decoder_isac_t_impl.h",
     "modules/audio_coding/codecs/isac/audio_encoder_isac_t.h",
-    "modules/audio_coding/codecs/isac/audio_encoder_isac_t_impl.h"
+    "modules/audio_coding/codecs/isac/audio_encoder_isac_t_impl.h",
+    "modules/audio_coding/codecs/isac/fix/source/audio_decoder_isacfix.cc",
+    "modules/audio_coding/codecs/isac/fix/source/audio_encoder_isacfix.cc",
+    "modules/audio_coding/codecs/isac/fix/source/fft.h",
+    "modules/audio_coding/codecs/isac/fix/source/filterbank_tables.c",
+    "modules/audio_coding/codecs/isac/fix/source/isac_fix_type.h",
+    "modules/audio_coding/codecs/isac/fix/source/pitch_gain_tables.c",
+    "modules/audio_coding/codecs/isac/main/source/audio_decoder_isac.cc",
+    "modules/audio_coding/codecs/isac/main/source/audio_encoder_isac.cc",
+    "modules/audio_coding/codecs/isac/main/source/encode_lpc_swb.h",
+    "modules/audio_coding/codecs/isac/main/source/pitch_gain_tables.c"
   ],
   "add": {
+    "filenames": [
+      "common_audio/wav_file_unittest.cc"
+    ],
     "headers": [
+      "<alsa/pcm.h>",
+      "<bits/pthreadtypes.h>",
+      "<epoxy/egl_generated.h>",
+      "<sched.h>",
+      "<EGL/eglplatform.h>",
+      "<X11/Xlib.h>",
       "absl/base/internal/inline_variable.h",
       "absl/flags/internal/flag.h",
       "absl/types/internal/optional.h",
@@ -48,7 +67,8 @@
       "gtest/internal/gtest-param-util.h",
       "gtest/internal/gtest-port.h",
       "gtest/internal/gtest-type-util.h",
-      "rtc_base/synchronization/sequence_checker_internal.h"
+      "rtc_base/synchronization/sequence_checker_internal.h",
+      "third_party/dav1d/libdav1d/include/dav1d/data.h"
     ]
   },
   "remove": {
@@ -65,6 +85,8 @@
       "base/compiler_specific.h",
       "base/hash/md5.h",
       "base/strings/string_piece.h",
+      "modules/audio_coding/codecs/legacy_encoded_audio_frame.h",
+      "rtc_base/format_macros.h",
       "rtc_base/numerics/running_statistics.h",
       "rtc_base/trace_event.h",
       "test/gmock.h",
@@ -100,6 +122,30 @@
       [
         "base/trace_event/typed_macros.h",
         "base/tracing/protos/chrome_track_event.pbzero.h"
+      ],
+      [
+        "modules/audio_coding/codecs/builtin_audio_decoder_factory_unittest.cc",
+        "api/audio_codecs/builtin_audio_decoder_factory.h"
+      ],
+      [
+        "modules/audio_coding/codecs/cng/webrtc_cng.h",
+        "rtc_base/buffer.h"
+      ],
+      [
+        "modules/audio_coding/codecs/isac/fix/source/decode_bwe.c",
+        "modules/audio_coding/codecs/isac/fix/source/bandwidth_estimator.h"
+      ],
+      [
+        "modules/audio_coding/codecs/isac/fix/source/pitch_estimator_c.c",
+        "common_audio/signal_processing/include/signal_processing_library.h"
+      ],
+      [
+        "modules/rtp_rtcp/source/fec_private_tables_bursty.cc",
+        "modules/rtp_rtcp/source/fec_private_tables_bursty.h"
+      ],
+      [
+        "modules/rtp_rtcp/source/fec_private_tables_random.cc",
+        "modules/rtp_rtcp/source/fec_private_tables_random.h"
       ],
       [
         "rtc_base/numerics/sample_stats.h",

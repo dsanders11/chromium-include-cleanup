@@ -33,7 +33,6 @@ def get_edge_sizes(include_analysis: IncludeAnalysisOutput, include_directories:
                 include_directory = include_directory if include_directory.endswith("/") else f"{include_directory}/"
                 if include.startswith(include_directory):
                     includes.append(include[len(include_directory) :])
-                    break
 
             for include in includes:
                 include = generated_file_prefix.match(include).group(1)

@@ -14,7 +14,7 @@ from sansio_lsp_client.structs import JSONDict, Request
 
 from utils import get_worker_count
 
-INCLUDE_REGEX = re.compile(r"\s*#include ([\"<](.*)[\">])")
+INCLUDE_REGEX = re.compile(r"\s*#\s*include ([\"<](.*)[\">])")
 
 # TODO - Bit hackish, but add to the LSP capabilities here, only extension point we have
 lsp.client.CAPABILITIES["textDocument"]["publishDiagnostics"]["codeActionsInline"] = True  # type: ignore

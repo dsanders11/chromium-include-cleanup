@@ -22,6 +22,7 @@
   },
   "remove": {
     "filenames": [
+      "base/numerics/safe_math.h",
       "base/trace_event/base_tracing.h",
       "mojo/public/cpp/system/core.h"
     ],
@@ -32,6 +33,7 @@
       "base/clang_profiling_buildflags.h",
       "base/compiler_specific.h",
       "base/hash/md5.h",
+      "base/numerics/safe_math.h",
       "base/strings/string_piece.h",
       "base/trace_event/base_tracing.h",
       "build/branding_buildflags.h",
@@ -114,6 +116,10 @@
         "mojo/public/cpp/bindings/map_traits_stl.h"
       ],
       [
+        "third_party/blink/renderer/core/dom/events/event_target.h",
+        "third_party/blink/renderer/core/event_type_names.h"
+      ],
+      [
         "third_party/blink/renderer/core/frame/web_feature.h",
         "third_party/blink/public/mojom/web_feature/web_feature.mojom-blink.h"
       ],
@@ -132,6 +138,10 @@
       [
         "third_party/blink/renderer/platform/wtf/hash_table.h",
         "third_party/blink/renderer/platform/wtf/hash_iterators.h"
+      ],
+      [
+        "third_party/blink/renderer/platform/wtf/text/string_concatenate.h",
+        "third_party/blink/renderer/platform/wtf/text/string_operators.h"
       ],
       [
         "third_party/blink/renderer/platform/wtf/text/atomic_string.h",

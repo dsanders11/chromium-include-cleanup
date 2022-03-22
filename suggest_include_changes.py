@@ -172,7 +172,9 @@ async def main():
         and not filename.endswith(".def")
         and not filename.endswith(".inc")
         and not filename.endswith(".inl")
+        and not filename.endswith(".s")
         and not filename.endswith(".S")
+        and not "/usr/include/c++/" in filename
     ]
 
     # Further filter the filenames if a filter was provided, so not all files are processed

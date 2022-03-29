@@ -68,6 +68,10 @@
         "base/allocator/partition_allocator/address_pool_manager_bitmap.h"
       ],
       [
+        "base/allocator/partition_allocator/partition_alloc_check.h",
+        "base/debug/alias.h"
+      ],
+      [
         "base/atomicops.h",
         "base/atomicops_internals_portable.h"
       ],
@@ -154,6 +158,10 @@
       [
         "skia/config/SkUserConfig.h",
         "skia/ext/skia_histogram.h"
+      ],
+      [
+        "ui/accessibility/ax_tree.h",
+        "base/metrics/histogram_functions.h"
       ],
       [
         "ui/gfx/image/image_skia_rep.h",

@@ -1,0 +1,14 @@
+{
+  "add": {},
+  "remove": {
+    "headers": [
+      "src/execution/frame-constants.h"
+    ],
+    "edges": [
+      [
+        "src/wasm/wasm-objects.h",
+        "src/wasm/stacks.h"
+      ]
+    ]
+  }
+}

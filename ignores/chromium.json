@@ -32,10 +32,12 @@
       "base/callback.h",
       "base/clang_profiling_buildflags.h",
       "base/compiler_specific.h",
+      "base/containers/cxx20_erase.h",
       "base/hash/md5.h",
       "base/numerics/safe_math.h",
       "base/strings/string_piece.h",
       "base/trace_event/base_tracing.h",
+      "base/trace_event/typed_macros.h",
       "build/branding_buildflags.h",
       "build/build_config.h",
       "build/chromecast_buildflags.h",
@@ -49,6 +51,7 @@
       "content/browser/web_contents/web_contents_impl.h",
       "extensions/buildflags/buildflags.h",
       "extensions/renderer/extension_frame_helper.h",
+      "include/gpu/vk/GrVkVulkan.h",
       "media/media_buildflags.h",
       "mojo/public/cpp/bindings/pending_receiver.h",
       "mojo/public/cpp/bindings/pending_remote.h",
@@ -57,7 +60,9 @@
       "mojo/public/cpp/system/core.h",
       "ppapi/buildflags/buildflags.h",
       "printing/buildflags/buildflags.h",
+      "testing/gtest/include/gtest/gtest_prod.h",
       "third_party/blink/renderer/platform/graphics/paint/paint_filter.h",
+      "third_party/skia/include/gpu/vk/GrVkVulkan.h",
       "ui/aura/window.h",
       "ui/gfx/image/image_skia_rep.h",
       "v8/include/v8.h"
@@ -78,6 +83,10 @@
       [
         "base/debug/crash_logging.h",
         "base/strings/string_number_conversions.h"
+      ],
+      [
+        "base/gtest_prod_util.h",
+        "testing/gtest/include/gtest/gtest_prod.h"
       ],
       [
         "base/hash/md5_constexpr.h",
@@ -104,8 +113,16 @@
         "components/enterprise/common/download_item_reroute_info.h"
       ],
       [
+        "content/public/common/common_param_traits.h",
+        "content/public/common/common_param_traits_macros.h"
+      ],
+      [
         "ipc/ipc_message_macros.h",
         "base/task/common/task_annotator.h"
+      ],
+      [
+        "gpu/command_buffer/service/gl_utils.h",
+        "ui/gl/gl_bindings.h"
       ],
       [
         "media/base/ipc/media_param_traits.h",
@@ -150,6 +167,10 @@
       [
         "third_party/blink/renderer/platform/wtf/text/atomic_string.h",
         "third_party/blink/renderer/platform/wtf/text/string_concatenate.h"
+      ],
+      [
+        "third_party/skia/src/sksl/ir/SkSLProgram.h",
+        "src/gpu/vk/GrVkCaps.h"
       ],
       [
         "services/network/public/cpp/url_request_mojom_traits.h",

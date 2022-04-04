@@ -63,14 +63,25 @@ def apply_changes(root_path: pathlib.Path, file_changes: Dict[str, List[Change]]
                     del lines[current_line_number]
                     line_offset -= 1
                 elif change_type is IncludeChange.ADD:
+                    skip = False
+
                     if header.startswith("<"):
                         include_line = f"#include {header}"
                     else:
                         include_line = f'#include "{header}"'
 
-                    logging.debug(f"Added include: {filename}:{current_line_number}:{include_line}")
-                    lines.insert(current_line_number, f"{include_line}\n")
-                    line_offset += 1
+                    for idx, line in enumerate(lines):
+                        if line.strip() == include_line:
+                            logging.warning(
+                                f"Skipping, include already present: {filename}:{idx + 1}:{include_line}"
+                            )
+                            skip = True
+                            break
+
+                    if not skip:
+                        logging.debug(f"Added include: {filename}:{current_line_number}:{include_line}")
+                        lines.insert(current_line_number, f"{include_line}\n")
+                        line_offset += 1
 
             # Write the content back out to file with modified includes
             if save_changes:

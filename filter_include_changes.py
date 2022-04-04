@@ -7,7 +7,7 @@ import os
 import pathlib
 import re
 import sys
-from typing import List, Tuple
+from typing import Dict, List, Tuple, Union
 
 from pydantic import BaseModel
 
@@ -30,6 +30,12 @@ class IgnoresConfiguration(BaseModel):
     skip: List[str] = []
     add: IgnoresSubConfiguration = IgnoresSubConfiguration()
     remove: IgnoresSubConfiguration = IgnoresSubConfiguration()
+
+
+class Configuration(BaseModel):
+    dependencies: Dict[str, Union[str, "Configuration"]] = {}
+    includeDirs: List[str] = []
+    ignores: IgnoresConfiguration = IgnoresConfiguration()
 
 
 GENERATED_FILE_REGEX = re.compile(r"^out/\w+/gen/.*$")
@@ -112,7 +118,7 @@ def main():
     )
     parser.add_argument("--filename-filter", help="Regex to filter which files have changes outputted.")
     parser.add_argument("--header-filter", help="Regex to filter which headers are included in the changes.")
-    parser.add_argument("--ignores", default="chromium", help="Name of ignores file to use.")
+    parser.add_argument("--config", help="Name of config file to use.")
     parser.add_argument("--no-filter-generated-files", action="store_true", help="Don't filter out generated files.")
     parser.add_argument("--no-filter-mojom-headers", action="store_true", help="Don't filter out mojom headers.")
     parser.add_argument("--no-filter-ignores", action="store_true", help="Don't filter out ignores.")
@@ -144,16 +150,52 @@ def main():
     else:
         change_type_filter = None
 
-    if args.no_filter_ignores:
-        ignores = None
-    else:
-        ignores_config_file = pathlib.Path(__file__).parent.joinpath("ignores", args.ignores).with_suffix(".json")
+    ignores = None
 
-        if not ignores_config_file.exists():
-            print(f"error: no ignores config file found: {ignores_config_file}")
+    if args.config and not args.no_filter_ignores:
+        config_file = pathlib.Path(__file__).parent.joinpath("configs", args.config).with_suffix(".json")
+
+        if not config_file.exists():
+            print(f"error: no config file found: {config_file}")
             return 1
 
-        ignores = IgnoresConfiguration.parse_file(ignores_config_file)
+        config = Configuration.parse_file(config_file)
+        ignores = config.ignores
+
+        # TODO - Extract this out, make it recursive so it can handle deeply nested
+        # TODO - Maybe warn about duplicates when merging?
+        for dependency in config.dependencies:
+            if isinstance(config.dependencies[dependency], str):
+                dependency_config_file = config_file.parent.joinpath(config.dependencies[dependency])
+
+                if not dependency_config_file.exists():
+                    print(f"error: no config file found: {dependency_config_file}")
+                    return 1
+
+                dependency_config = Configuration.parse_file(dependency_config_file)
+                dependency_ignores = dependency_config.ignores
+            else:
+                dependency_ignores = config.dependencies[dependency].ignores
+
+            # Files to skip are relative to the source root
+            for file_to_skip in dependency_ignores.skip:
+                ignores.skip.append(str(pathlib.Path(dependency).joinpath(file_to_skip)))
+
+            for op in ("add", "remove"):
+                # Filenames are relative to the source root
+                for filename in getattr(dependency_ignores, op).filenames:
+                    getattr(ignores, op).filenames.append(str(pathlib.Path(dependency).joinpath(filename)))
+
+                # Headers are accessible both internally and externally, so include them as-is and
+                # also include them relative to the source root for top-level inclusion
+                for header in getattr(dependency_ignores, op).headers:
+                    headers = getattr(ignores, op).headers
+                    headers.append(header)
+                    headers.append(str(pathlib.Path(dependency).joinpath(header)))
+
+                # Edges are only processed if their file is, and that file is relative to the source root
+                for filename, header in getattr(dependency_ignores, op).edges:
+                    getattr(ignores, op).edges.append((str(pathlib.Path(dependency).joinpath(filename)), header))
 
     csv_writer = csv.writer(sys.stdout)
 

@@ -1,0 +1,21 @@
+{
+  "ignores": {
+    "add": {
+      "headers": [
+        "v8-internal.h"
+      ]
+    },
+    "remove": {
+      "headers": [
+        "include/v8.h",
+        "src/execution/frame-constants.h"
+      ],
+      "edges": [
+        [
+          "src/wasm/wasm-objects.h",
+          "src/wasm/stacks.h"
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Include Cleanup Configuration",
+  "description": "Configuration settings for use with include cleanup scripts",
+  "type": "object",
+  "properties": {
+    "dependencies": {
+      "description": "Configuration settings for dependencies",
+      "type": "object",
+      "patternProperties": {
+        ".*": {
+          "description": "Path to dependency in the source tree",
+          "oneOf": [
+            {
+              "$ref": "#"
+            },
+            {
+              "description": "Path to another config file to include",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    "includeDirs": {
+      "description": "A list of include directories to use when processing this codebase. Paths to dependencies are automatically added to this list.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ignores": {
+      "description": "Known inaccurate output which should be ignored",
+      "type": "object",
+      "properties": {
+        "skip": {
+          "description": "This is a list of filenames to skip entirely, for situations like when clangd infers a bad compile command",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "add": {
+          "description": "Ignores for suggestions to add includes",
+          "type": "object",
+          "properties": {
+            "filenames": {
+              "description": "This is a list of known filenames to skip when suggesting includes to add.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "headers": {
+              "description": "This is a list of known headers where clangd produces a false positive when suggesting as includes to add.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "edges": {
+              "description": "This is a list of known edges where clangd produces a false positive when suggesting as an include to add.",
+              "type": "array",
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "remove": {
+          "description": "Ignores for suggestions to remove includes",
+          "type": "object",
+          "properties": {
+            "filenames": {
+              "description": "This is a list of known filenames to skip when suggesting unused includes. It's mostly a list of umbrella headers where the includes will appear to clangd to be unused, but are meant to be included.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "headers": {
+              "description": "This is a list of known headers where clangd produces a false positive when suggesting as unused includes to remove. Usually these are umbrella headers, or headers where clangd thinks the canonical location for a symbol is actually in a forward declaration, causing it to flag the correct header as unused everywhere.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "edges": {
+              "description": "This is a list of known edges where clangd produces a false positive when suggesting as unused includes to remove.",
+              "type": "array",
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

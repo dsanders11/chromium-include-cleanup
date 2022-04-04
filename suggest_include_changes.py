@@ -176,7 +176,7 @@ async def main():
         work_queue = asyncio.Queue()
         clangd_client: ClangdClient = None
 
-        # Process the files in chunks, restarting clangd inbetween. Performance seems to
+        # Process the files in chunks, restarting clangd in between. Performance seems to
         # degrade with clangd over time as more files are processed. It's possibly a bug
         # in this script, or just that clangd is building something up every file processed
         while len(filenames) > 0 or work_queue.qsize() > 0:

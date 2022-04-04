@@ -97,7 +97,7 @@ async def check_cl(
 
     try:
         # Now change the file content on disk to the CL version
-        # TODO - Consider aiofiles, although performance impact is likely neglible
+        # TODO - Consider aiofiles, although performance impact is likely negligible
         for filename in files:
             with open((clangd_client.root_path / filename), "w") as f:
                 f.write(files[filename].decode("utf8"))

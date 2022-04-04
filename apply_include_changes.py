@@ -72,9 +72,7 @@ def apply_changes(root_path: pathlib.Path, file_changes: Dict[str, List[Change]]
 
                     for idx, line in enumerate(lines):
                         if line.strip() == include_line:
-                            logging.warning(
-                                f"Skipping, include already present: {filename}:{idx + 1}:{include_line}"
-                            )
+                            logging.warning(f"Skipping, include already present: {filename}:{idx + 1}:{include_line}")
                             skip = True
                             break
 

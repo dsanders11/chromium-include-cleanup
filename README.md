@@ -11,8 +11,8 @@ Scripts to help guide cleanup of #include lines in a codebase, using `clangd`
 * `filter_include_changes.py` - Filter include changes output
 * `post_process_compilation_db.py` - Post-process the clang compilation
   database for analysis
+* `set_edge_weights.py` - Set edge weights in include changes output
 * `suggest_include_changes.py` - Suggests includes to add and remove
-* `update_edge_sizes.py` - Update edge sizes in include changes output
 
 ## Prerequisites
 

@@ -7,35 +7,16 @@ import os
 import pathlib
 import re
 import sys
-from typing import Dict, List, Tuple, Union
-
-from pydantic import BaseModel
+from typing import List, Tuple
 
 # Insert this script's directory into the path so it can import sibling modules
 # TODO - Is this actually necessary?
 sys.path.insert(0, pathlib.Path(__file__).parent.resolve())
 
-from common import IncludeChange
+from common import IgnoresConfiguration, IncludeChange
+from utils import load_config
 
 Change = Tuple[IncludeChange, int, str, str, int]
-
-
-class IgnoresSubConfiguration(BaseModel):
-    filenames: List[str] = []
-    headers: List[str] = []
-    edges: List[Tuple[str, str]] = []
-
-
-class IgnoresConfiguration(BaseModel):
-    skip: List[str] = []
-    add: IgnoresSubConfiguration = IgnoresSubConfiguration()
-    remove: IgnoresSubConfiguration = IgnoresSubConfiguration()
-
-
-class Configuration(BaseModel):
-    dependencies: Dict[str, Union[str, "Configuration"]] = {}
-    includeDirs: List[str] = []
-    ignores: IgnoresConfiguration = IgnoresConfiguration()
 
 
 GENERATED_FILE_REGEX = re.compile(r"^out/\w+/gen/.*$")
@@ -153,49 +134,7 @@ def main():
     ignores = None
 
     if args.config and not args.no_filter_ignores:
-        config_file = pathlib.Path(__file__).parent.joinpath("configs", args.config).with_suffix(".json")
-
-        if not config_file.exists():
-            print(f"error: no config file found: {config_file}")
-            return 1
-
-        config = Configuration.parse_file(config_file)
-        ignores = config.ignores
-
-        # TODO - Extract this out, make it recursive so it can handle deeply nested
-        # TODO - Maybe warn about duplicates when merging?
-        for dependency in config.dependencies:
-            if isinstance(config.dependencies[dependency], str):
-                dependency_config_file = config_file.parent.joinpath(config.dependencies[dependency])
-
-                if not dependency_config_file.exists():
-                    print(f"error: no config file found: {dependency_config_file}")
-                    return 1
-
-                dependency_config = Configuration.parse_file(dependency_config_file)
-                dependency_ignores = dependency_config.ignores
-            else:
-                dependency_ignores = config.dependencies[dependency].ignores
-
-            # Files to skip are relative to the source root
-            for file_to_skip in dependency_ignores.skip:
-                ignores.skip.append(str(pathlib.Path(dependency).joinpath(file_to_skip)))
-
-            for op in ("add", "remove"):
-                # Filenames are relative to the source root
-                for filename in getattr(dependency_ignores, op).filenames:
-                    getattr(ignores, op).filenames.append(str(pathlib.Path(dependency).joinpath(filename)))
-
-                # Headers are accessible both internally and externally, so include them as-is and
-                # also include them relative to the source root for top-level inclusion
-                for header in getattr(dependency_ignores, op).headers:
-                    headers = getattr(ignores, op).headers
-                    headers.append(header)
-                    headers.append(str(pathlib.Path(dependency).joinpath(header)))
-
-                # Edges are only processed if their file is, and that file is relative to the source root
-                for filename, header in getattr(dependency_ignores, op).edges:
-                    getattr(ignores, op).edges.append((str(pathlib.Path(dependency).joinpath(filename)), header))
+        ignores = load_config(args.config).ignores
 
     csv_writer = csv.writer(sys.stdout)
 

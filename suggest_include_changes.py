@@ -7,7 +7,7 @@ import logging
 import pathlib
 import re
 import sys
-from typing import AsyncIterator, Callable, Dict, Optional, Tuple
+from typing import AsyncIterator, Callable, Optional, Tuple
 
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -19,13 +19,12 @@ sys.path.insert(0, pathlib.Path(__file__).parent.resolve())
 from clangd_lsp import ClangdClient, ClangdCrashed
 from common import IncludeChange
 from include_analysis import ParseError, parse_raw_include_analysis_output
-from utils import get_edge_sizes, get_worker_count
+from utils import get_worker_count
 
 
 async def suggest_include_changes(
     clangd_client: ClangdClient,
     work_queue: asyncio.Queue,
-    edge_sizes: Dict[str, Dict[str, int]] = None,
     progress_callback: Callable[[str], None] = None,
 ) -> AsyncIterator[Tuple[IncludeChange, int, str, str, Optional[int]]]:
     """
@@ -43,44 +42,16 @@ async def suggest_include_changes(
             try:
                 add, remove = await clangd_client.get_include_suggestions(filename)
 
-                for (include, line) in add:
-                    # TODO - Some metric for how important they are to add, if there
-                    #        is one? Maybe something like the ratio of occurrences to
-                    #        direct includes, suggesting it's used a lot, but has lots
-                    #        of missing includes? That metric wouldn't really work well
-                    #        since leaf headers of commonly included headers would end
-                    #        up with a high ratio, despite not really being important to
-                    #        add anywhere. Maybe there's no metric here and instead an
-                    #        analysis is done at the end to rank headers by how many
-                    #        suggested includes there are for that file.
-                    suggested_changes.put_nowait(
-                        (
-                            IncludeChange.ADD,
-                            line,
-                            filename,
-                            include,
-                        )
-                    )
-
-                for (include, line) in remove:
-                    edge_size = None
-
-                    if edge_sizes:
-                        try:
-                            edge_size = edge_sizes[filename][include]
-                        except KeyError:
-                            logging.error(
-                                f"clangd returned an unused include not in the include analysis output: {include}"
+                for changes, op in ((add, IncludeChange.ADD), (remove, IncludeChange.REMOVE)):
+                    for (include, line) in changes:
+                        suggested_changes.put_nowait(
+                            (
+                                op,
+                                line,
+                                filename,
+                                include,
                             )
-
-                    change = (
-                        IncludeChange.REMOVE,
-                        line,
-                        filename,
-                        include,
-                    )
-
-                    suggested_changes.put_nowait(change if edge_size is None else (*change, edge_size))
+                        )
             except ClangdCrashed:
                 logging.error(f"Skipping file due to clangd crash: {filename}")
                 raise
@@ -137,7 +108,6 @@ async def main():
     parser.add_argument(
         "--restart-clangd-after", type=int, default=350, help="Restart clangd every N files processed."
     )
-    parser.add_argument("--include-dir", action="append", help="Include directory.")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
 
@@ -184,7 +154,6 @@ async def main():
         if not filename_filter or (filename_filter and filename_filter.match(filename))
     ]
 
-    edge_sizes = get_edge_sizes(include_analysis, args.include_dir)
     root_path = args.src_root.resolve()
 
     if not ClangdClient.validate_config(root_path):
@@ -221,7 +190,6 @@ async def main():
                 async for change_type, *include_change in suggest_include_changes(
                     clangd_client,
                     work_queue,
-                    edge_sizes,
                     progress_callback=lambda _: progress_output.update(),
                 ):
                     csv_writer.writerow((change_type.value, *include_change))

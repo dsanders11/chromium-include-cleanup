@@ -128,7 +128,7 @@ async def main():
         default="clangd.exe" if sys.platform == "win32" else "clangd",
     )
     parser.add_argument(
-        "--chromium-src", type=pathlib.Path, help="Path to the Chromium source tree.", default=pathlib.Path(".")
+        "--src-root", type=pathlib.Path, help="Path to the source tree root.", default=pathlib.Path(".")
     )
     parser.add_argument(
         "--compile-commands-dir", type=pathlib.Path, help="Specify a path to look for compile_commands.json."
@@ -185,7 +185,7 @@ async def main():
     ]
 
     edge_sizes = get_edge_sizes(include_analysis, args.include_dir)
-    root_path = args.chromium_src.resolve()
+    root_path = args.src_root.resolve()
 
     if not ClangdClient.validate_config(root_path):
         print("error: Must have a .clangd config with IncludeCleaner enabled")

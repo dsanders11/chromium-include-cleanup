@@ -98,7 +98,7 @@ async def main():
         help="CSV of changes to apply.",
     )
     parser.add_argument(
-        "--chromium-src", type=pathlib.Path, help="Path to the Chromium source tree.", default=pathlib.Path(".")
+        "--src-root", type=pathlib.Path, help="Path to the source tree root.", default=pathlib.Path(".")
     )
     parser.add_argument("--max-count", type=int, help="Maximum number of changes to apply.")
     parser.add_argument(
@@ -126,7 +126,7 @@ async def main():
         if args.max_count and changes_count == args.max_count:
             break
 
-    apply_changes(args.chromium_src, changes, save_changes=not args.dry_run)
+    apply_changes(args.src_root, changes, save_changes=not args.dry_run)
 
     return 0
 

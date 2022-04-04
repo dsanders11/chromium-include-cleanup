@@ -31,7 +31,7 @@ def post_process_compilation_database(compilation_database: list):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Post-process the clang compilation database for Chromium")
+    parser = argparse.ArgumentParser(description="Post-process the clang compilation database for analysis")
     parser.add_argument(
         "compilation_database",
         type=argparse.FileType("r"),

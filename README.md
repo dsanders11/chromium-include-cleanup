@@ -1,5 +1,6 @@
 # chromium-include-cleanup
-Scripts to help guide cleanup of #include lines in the Chromium codebase
+
+Scripts to help guide cleanup of #include lines in a codebase, using `clangd`
 
 ## Scripts
 
@@ -9,7 +10,7 @@ Scripts to help guide cleanup of #include lines in the Chromium codebase
   remove includes as a result of the changes being made
 * `filter_include_changes.py` - Filter include changes output
 * `post_process_compilation_db.py` - Post-process the clang compilation
-  database for Chromium
+  database for analysis
 * `suggest_include_changes.py` - Suggests includes to add and remove
 * `update_edge_sizes.py` - Update edge sizes in include changes output
 
@@ -83,8 +84,8 @@ will scale well on beefier machines.
 Currently the `suggest_include_changes.py` script has problems with suggesting
 includes to remove when the filename in the `#include` line does not match the
 filename in the include analysis output, which could happen for includes
-inside third-party code which is including relative to itself, not the
-Chromium src root.
+inside third-party code which is including relative to itself, not the source
+root.
 
 When suggesting includes to add, `clangd` will sometimes suggest headers which
 are internal to the standard library, like `<__hash_table>`, rather than the

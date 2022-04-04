@@ -17,6 +17,8 @@ from typing import Dict, List, Mapping, Tuple
 sys.path.insert(0, pathlib.Path(__file__).parent.resolve())
 
 from clangd_lsp import ClangdClient, ClangdPublishDiagnostics, parse_includes_from_diagnostics
+from filter_include_changes import filter_changes
+from utils import load_config
 
 GERRIT_BASE_URL = "https://chromium-review.googlesource.com"
 CHANGE_FILES_ENDPOINT = GERRIT_BASE_URL + "/changes/chromium%2Fsrc~{change_list}/revisions/{revision}/files"
@@ -118,16 +120,18 @@ async def check_cl(
         final_add: List[str] = []
         final_remove: List[str] = []
 
-        initial_add, initial_remove = initial_includes[filename]
+        initial_adds, initial_removes = initial_includes[filename]
+        initial_adds = [header for header, _ in initial_adds]
+        initial_removes = [header for header, _ in initial_removes]
         cl_add, cl_remove = cl_includes[filename]
 
-        for add in cl_add:
-            if add not in initial_add:
-                final_add.append(add)
+        for (header, line) in cl_add:
+            if header not in initial_adds:
+                final_add.append((header, line))
 
-        for remove in cl_remove:
-            if remove not in initial_remove:
-                final_remove.append(remove)
+        for (header, line) in cl_remove:
+            if header not in initial_removes:
+                final_remove.append((header, line))
 
         final_includes[filename] = (tuple(final_add), tuple(final_remove))
 
@@ -182,6 +186,7 @@ async def main():
 
         return clangd_client
 
+    config = load_config("chromium")
     csv_writer = csv.writer(sys.stdout)
 
     clangd_client = await start_clangd_client()
@@ -189,15 +194,19 @@ async def main():
     try:
         # TODO - Consider retry logic on clangd crash
         include_warnings = await check_cl(clangd_client, args.change_list)
+        changes = []
 
         for filename in include_warnings:
             add, remove = include_warnings[filename]
 
-            for include in add:
-                csv_writer.writerow(("add", filename, include))
+            for (include, line) in add:
+                changes.append(("add", line, filename, include))
 
-            for include in remove:
-                csv_writer.writerow(("remove", filename, include))
+            for (include, line) in remove:
+                changes.append(("remove", line, filename, include))
+
+        for change in filter_changes(changes, config.ignores):
+            csv_writer.writerow(change)
     finally:
         await clangd_client.exit()
 

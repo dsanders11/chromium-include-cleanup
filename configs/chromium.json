@@ -2,7 +2,32 @@
   "includeDirs": [
     "base/third_party/xdg_mime",
     "base/third_party/double_conversion",
+    "net/third_party/quiche/src",
+    "third_party/angle/src",
+    "third_party/brotli/include",
+    "third_party/dawn/src",
+    "third_party/dawn/third_party/tint",
+    "third_party/ffmpeg",
+    "third_party/flatbuffers/src/include",
+    "third_party/harfbuzz-ng/src/src",
+    "third_party/icu/source/common",
+    "third_party/icu/source/i18n",
+    "third_party/leveldatabase/src",
+    "third_party/leveldatabase/src/include",
+    "third_party/libaom/source/libaom",
+    "third_party/libvpx/source/libvpx",
+    "third_party/pdfium",
     "third_party/perfetto/include",
+    "third_party/swiftshader/include",
+    "third_party/swiftshader/src",
+    "third_party/swiftshader/third_party/SPIRV-Tools",
+    "third_party/swiftshader/third_party/SPIRV-Tools/include",
+    "third_party/swiftshader/third_party/SPIRV-Tools/source",
+    "third_party/s2cellid/src",
+    "third_party/tflite/src",
+    "third_party/vulkan/include",
+    "third_party/vulkan-deps/spirv-tools/src/include",
+    "third_party/vulkan-deps/vulkan-headers/src/include",
     "third_party/webrtc"
   ],
   "dependencies": {
@@ -13,6 +38,11 @@
             "absl/base/internal/inline_variable.h",
             "absl/types/internal/optional.h",
             "absl/types/optional.h"
+          ]
+        },
+        "remove": {
+          "filenames": [
+            "third_party/abseil-cpp/absl/base/config.h"
           ]
         }
       }
@@ -32,6 +62,7 @@
         }
       }
     },
+    "third_party/webrtc": "./webrtc.json",
     "v8": "./v8.json"
   },
   "ignores": {
@@ -56,7 +87,9 @@
       "filenames": [
         "base/numerics/safe_math.h",
         "base/trace_event/base_tracing.h",
-        "mojo/public/cpp/system/core.h"
+        "mojo/public/cpp/system/core.h",
+        "testing/gtest/include/gtest/gtest_prod.h",
+        "third_party/icu/source/common/unicode/umachine.h"
       ],
       "headers": [
         "base/allocator/buildflags.h",

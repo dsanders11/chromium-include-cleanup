@@ -18,9 +18,9 @@ Scripts to help guide cleanup of #include lines in a codebase, using `clangd`
 
 To use these scripts, you'll need:
 
-* An [unstable snapshot release][clangd-releases] of `clangd` which has
-  "IncludeCleaner", or a build of `clangd` from source with the patches in
-  this repository applied.
+* An [release of `clangd`][clangd-releases] which has "IncludeCleaner"
+  (14.0.0+), or a build of `clangd` from source with the patches in this
+  repository applied for expanded functionality.
 * The full output of `include_analysis.py`, see
   [discussion on the mailing list][include-analysis] for how to generate it
 * A compilation database for `clangd` to use, which can be generated with

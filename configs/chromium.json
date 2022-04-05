@@ -42,7 +42,7 @@
         },
         "remove": {
           "filenames": [
-            "third_party/abseil-cpp/absl/base/config.h"
+            "absl/base/config.h"
           ]
         }
       }
@@ -50,7 +50,7 @@
     "third_party/skia": {
       "ignores": {
         "remove": {
-          "headers": [
+          "filenames": [
             "include/gpu/vk/GrVkVulkan.h"
           ],
           "edges": [

@@ -1,4 +1,23 @@
 {
+  "includeDirs": [
+    "src",
+    "deps/cares/include",
+    "deps/cares/src/lib",
+    "deps/googletest/include",
+    "deps/icu-small/source/common",
+    "deps/icu-small/source/i18n",
+    "deps/icu-small/source/tools/toolutil",
+    "deps/nghttp2/lib",
+    "deps/ngtcp2/nghttp3/lib",
+    "deps/ngtcp2/ngtcp2/lib",
+    "deps/openssl/openssl/include",
+    "deps/openssl/openssl",
+    "deps/openssl/openssl/apps/include",
+    "deps/v8/include",
+    "deps/v8",
+    "deps/uv/include",
+    "deps/uvwasi/include"
+  ],
   "ignores": {
     "add": {},
     "remove": {

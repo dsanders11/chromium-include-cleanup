@@ -3,6 +3,7 @@
 import argparse
 import csv
 import logging
+import os
 import pathlib
 import sys
 import typing
@@ -89,8 +90,15 @@ def main():
     edge_sizes = get_edge_sizes(include_analysis, config.includeDirs if config else None)
     csv_writer = csv.writer(sys.stdout)
 
-    for row in set_edge_weights(args.changes_file, edge_sizes):
-        csv_writer.writerow(row)
+    try:
+        for row in set_edge_weights(args.changes_file, edge_sizes):
+            csv_writer.writerow(row)
+
+        sys.stdout.flush()
+    except BrokenPipeError:
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        sys.exit(1)
 
     return 0
 

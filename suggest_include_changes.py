@@ -7,7 +7,7 @@ import logging
 import pathlib
 import re
 import sys
-from typing import AsyncIterator, Callable, Optional, Tuple
+from typing import AsyncIterator, Callable, List, Optional, Tuple
 
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -20,6 +20,24 @@ from clangd_lsp import ClangdClient, ClangdCrashed
 from common import IncludeChange
 from include_analysis import ParseError, parse_raw_include_analysis_output
 from utils import get_worker_count
+
+
+def filter_filenames(filenames: List[str], filename_filter: re.Pattern = None) -> List[str]:
+    # Filter out some files we know we don't want to process, like the system headers, and non-source files
+    # Further filter the filenames if a filter was provided, so not all files are processed
+    return [
+        filename
+        for filename in filenames
+        if not re.match(r"^(?:buildtools|build)/", filename)
+        and not filename.endswith(".sigs")
+        and not filename.endswith(".def")
+        and not filename.endswith(".inc")
+        and not filename.endswith(".inl")
+        and not filename.endswith(".s")
+        and not filename.endswith(".S")
+        and "/usr/include/c++/" not in filename
+        and (not filename_filter or (filename_filter and filename_filter.match(filename)))
+    ]
 
 
 async def suggest_include_changes(
@@ -133,32 +151,13 @@ async def main():
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
-    # Filter out some files we know we don't want to process, like the system headers, and non-source files
-    filenames = [
-        filename
-        for filename in include_analysis["files"]
-        if not re.match(r"^(?:buildtools|build)/", filename)
-        and not filename.endswith(".sigs")
-        and not filename.endswith(".def")
-        and not filename.endswith(".inc")
-        and not filename.endswith(".inl")
-        and not filename.endswith(".s")
-        and not filename.endswith(".S")
-        and "/usr/include/c++/" not in filename
-    ]
-
-    # Further filter the filenames if a filter was provided, so not all files are processed
-    filenames = [
-        filename
-        for filename in filenames
-        if not filename_filter or (filename_filter and filename_filter.match(filename))
-    ]
-
     root_path = args.src_root.resolve()
 
     if not ClangdClient.validate_config(root_path):
         print("error: Must have a .clangd config with IncludeCleaner enabled")
         return 3
+
+    filenames = filter_filenames(include_analysis["files"], filename_filter)
 
     async def start_clangd_client():
         clangd_client = ClangdClient(

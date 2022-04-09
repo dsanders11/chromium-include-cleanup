@@ -85,6 +85,7 @@
     },
     "remove": {
       "filenames": [
+        "base/containers/cxx20_erase.h",
         "base/numerics/safe_math.h",
         "base/trace_event/base_tracing.h",
         "mojo/public/cpp/system/core.h",
@@ -97,7 +98,6 @@
         "base/callback.h",
         "base/clang_profiling_buildflags.h",
         "base/compiler_specific.h",
-        "base/containers/cxx20_erase.h",
         "base/hash/md5.h",
         "base/numerics/safe_math.h",
         "base/strings/string_piece.h",

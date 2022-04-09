@@ -9,9 +9,6 @@ import re
 import sys
 from typing import AsyncIterator, Callable, List, Optional, Tuple
 
-from tqdm import tqdm
-from tqdm.contrib.logging import logging_redirect_tqdm
-
 from clangd_lsp import ClangdClient, ClangdCrashed
 from common import IncludeChange
 from include_analysis import ParseError, parse_raw_include_analysis_output
@@ -98,6 +95,9 @@ async def suggest_include_changes(
 
 # TODO - How to detect when compilation DB isn't found and clangd is falling back (won't work)
 async def main():
+    from tqdm import tqdm
+    from tqdm.contrib.logging import logging_redirect_tqdm
+
     parser = argparse.ArgumentParser(
         description="Suggest includes to add or remove, guided by the JSON analysis data from analyze_includes.py"
     )

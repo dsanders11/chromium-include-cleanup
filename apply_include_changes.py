@@ -10,10 +10,6 @@ import sys
 from collections import defaultdict
 from typing import Dict, List, Tuple
 
-# Insert this script's directory into the path so it can import sibling modules
-# TODO - Is this actually necessary?
-sys.path.insert(0, pathlib.Path(__file__).parent.resolve())
-
 from common import IncludeChange
 
 INCLUDE_REGEX = re.compile(r"\s*#include ([\"<](.*)[\">])")

@@ -12,10 +12,6 @@ import urllib.parse
 import urllib.request
 from typing import Dict, List, Mapping, Tuple
 
-# Insert this script's directory into the path so it can import sibling modules
-# TODO - Is this actually necessary?
-sys.path.insert(0, pathlib.Path(__file__).parent.resolve())
-
 from clangd_lsp import ClangdClient, ClangdPublishDiagnostics, parse_includes_from_diagnostics
 from filter_include_changes import filter_changes
 from utils import load_config

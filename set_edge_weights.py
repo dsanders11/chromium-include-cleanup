@@ -9,10 +9,6 @@ import sys
 import typing
 from typing import Dict, Iterator, Optional, Tuple
 
-# Insert this script's directory into the path so it can import sibling modules
-# TODO - Is this actually necessary?
-sys.path.insert(0, pathlib.Path(__file__).parent.resolve())
-
 from common import IncludeChange
 from include_analysis import ParseError, parse_raw_include_analysis_output
 from utils import get_edge_sizes, load_config

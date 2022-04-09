@@ -12,10 +12,6 @@ from typing import AsyncIterator, Callable, List, Optional, Tuple
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-# Insert this script's directory into the path so it can import sibling modules
-# TODO - Is this actually necessary?
-sys.path.insert(0, pathlib.Path(__file__).parent.resolve())
-
 from clangd_lsp import ClangdClient, ClangdCrashed
 from common import IncludeChange
 from include_analysis import ParseError, parse_raw_include_analysis_output

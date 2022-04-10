@@ -4,6 +4,8 @@ from typing import Dict, List, Optional, TypedDict
 
 
 class RawIncludeAnalysisOutput(TypedDict):
+    revision: str
+    date: str
     files: List[str]
     roots: List[int]
     includes: List[List[int]]
@@ -16,6 +18,8 @@ class RawIncludeAnalysisOutput(TypedDict):
 
 
 class IncludeAnalysisOutput(TypedDict):
+    revision: str
+    date: str
     files: List[str]
     roots: List[str]
     includes: Dict[str, List[str]]
@@ -48,10 +52,9 @@ def parse_raw_include_analysis_output(output: str) -> Optional[IncludeAnalysisOu
     except json.JSONDecodeError as e:
         raise ParseError(str(e)) from e
 
-    parsed_output: IncludeAnalysisOutput = {}  # type: ignore
+    parsed_output: IncludeAnalysisOutput = raw_output.copy()
 
-    # Nothing needs to be done with "files", it's already just a list of filenames
-    parsed_output["files"] = files = raw_output["files"]
+    files = raw_output["files"]
 
     # "roots" is a list of root filenames
     parsed_output["roots"] = [files[nr] for nr in raw_output["roots"]]

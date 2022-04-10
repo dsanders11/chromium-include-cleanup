@@ -6,8 +6,6 @@ Scripts to help guide cleanup of #include lines in a codebase, using `clangd`
 
 * `apply_include_changes.py` - Apply include changes to files in the source
   tree
-* `check_cl.py` - Proof-of-concept script to check if a CL should add or
-  remove includes as a result of the changes being made
 * `filter_include_changes.py` - Filter include changes output
 * `post_process_compilation_db.py` - Post-process the clang compilation
   database for analysis
@@ -115,20 +113,6 @@ Known situations in Chromium where `clangd` will produce false positives:
     exist which make it unnecessary
   * `clangd` will still suggest an include even if a forward declaration makes it
     unnecessary
-
-## Checking a CL (Proof-of-Concept)
-
-The `check_cl.py` script can be used to check if a CL should add or remove
-includes. It should be run (ideally) in a source tree on the commit the CL is
-on top of, but any commit approximately around that commit should still yield
-results. For ideal results, the compilation database should always be
-re-generated when the source tree is changed to a different HEAD commit.
-
-```
-$ cd ~/chromium/src
-$ python3 ~/chromium-include-cleanup/check_cl.py --compile-commands-dir=out/Default 3433015
-add,ui/base/ui_base_features.cc,base/metrics/field_trial_params.h
-```
 
 [clangd-releases]: https://github.com/clangd/clangd/releases
 [include-analysis]: https://groups.google.com/a/chromium.org/g/chromium-dev/c/0ZME4DuE06k

@@ -323,7 +323,12 @@ class ClangdClient:
         if filename.endswith(".h"):
             # TODO - How to mark header files as Objective-C++ or C? Does it matter?
             language_id = "cpp"
-        elif filename.endswith(".hh") or filename.endswith(".hpp") or filename.endswith(".hxx"):
+        elif (
+            filename.endswith(".hh")
+            or filename.endswith(".hpp")
+            or filename.endswith(".hpp11")
+            or filename.endswith(".hxx")
+        ):
             language_id = "cpp"
         elif filename.endswith(".cc") or filename.endswith(".cpp") or filename.endswith(".cxx"):
             language_id = "cpp"

@@ -1,10 +1,14 @@
 {
   "includeDirs": [
+    "base/third_party/libevent/linux",
     "base/third_party/xdg_mime",
     "base/third_party/double_conversion",
     "net/third_party/quiche/src",
+    "net/third_party/quiche/src/common/platform/default",
     "third_party/angle/src",
+    "third_party/breakpad/breakpad/src",
     "third_party/brotli/include",
+    "third_party/dawn/include",
     "third_party/dawn/src",
     "third_party/dawn/third_party/tint",
     "third_party/ffmpeg",
@@ -16,8 +20,11 @@
     "third_party/leveldatabase/src/include",
     "third_party/libaom/source/libaom",
     "third_party/libvpx/source/libvpx",
+    "third_party/mesa_headers",
     "third_party/pdfium",
     "third_party/perfetto/include",
+    "third_party/protobuf/src",
+    "third_party/re2/src",
     "third_party/swiftshader/include",
     "third_party/swiftshader/src",
     "third_party/swiftshader/third_party/SPIRV-Tools",
@@ -28,7 +35,8 @@
     "third_party/vulkan/include",
     "third_party/vulkan-deps/spirv-tools/src/include",
     "third_party/vulkan-deps/vulkan-headers/src/include",
-    "third_party/webrtc"
+    "third_party/webrtc",
+    "third_party/wtl/include"
   ],
   "dependencies": {
     "third_party/abseil-cpp": {

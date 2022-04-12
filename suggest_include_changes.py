@@ -21,7 +21,7 @@ def filter_filenames(filenames: List[str], filename_filter: re.Pattern = None) -
     return [
         filename
         for filename in filenames
-        if not re.match(r"^(?:buildtools|build)/", filename)
+        if not re.match(r"^(?:buildtools|build|third_party/llvm-build)/", filename)
         and not filename.endswith(".sigs")
         and not filename.endswith(".def")
         and not filename.endswith(".inc")

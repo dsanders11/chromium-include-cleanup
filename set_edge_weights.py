@@ -4,7 +4,6 @@ import argparse
 import csv
 import logging
 import os
-import pathlib
 import sys
 import typing
 from typing import Dict, Iterator, Optional, Tuple

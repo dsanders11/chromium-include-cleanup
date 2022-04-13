@@ -119,7 +119,7 @@ def filter_changes(
                         if pending_changes[filename][header][0] is IncludeChange.ADD:
                             continue
 
-                yield (change_type.value, line, filename, header_mappings, *_)
+                yield (change_type.value, line, filename, header_mappings[header], *_)
 
 
 def main():

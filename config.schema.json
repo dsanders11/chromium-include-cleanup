@@ -107,6 +107,16 @@
           "additionalProperties": false
         }
       }
+    },
+    "headerMappings": {
+      "description": "Mappings between header names from clangd and the canonical header, used when suggesting includes to add",
+      "type": "object",
+      "patternProperties": {
+        ".*": {
+          "description": "Mapping from header filename to canonical filename",
+          "type": "string"
+        }
+      }
     }
   },
   "additionalProperties": false

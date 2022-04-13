@@ -43,9 +43,7 @@
       "ignores": {
         "add": {
           "headers": [
-            "absl/base/internal/inline_variable.h",
-            "absl/types/internal/optional.h",
-            "absl/types/optional.h"
+            "absl/base/internal/inline_variable.h"
           ]
         },
         "remove": {
@@ -270,5 +268,9 @@
         ]
       ]
     }
+  },
+  "headerMappings": {
+    "absl/types/optional.h": "third_party/abseil-cpp/absl/types/optional.h",
+    "third_party/abseil-cpp/absl/types/internal/optional.h": "third_party/abseil-cpp/absl/types/optional.h"
   }
 }

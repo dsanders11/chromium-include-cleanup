@@ -7,7 +7,8 @@ import os
 import pathlib
 import re
 import sys
-from typing import List, Tuple
+from collections import defaultdict
+from typing import DefaultDict, Dict, List, Tuple
 
 from common import IgnoresConfiguration, IncludeChange
 from utils import load_config
@@ -27,8 +28,14 @@ def filter_changes(
     change_type_filter: IncludeChange = None,
     filter_generated_files=True,
     filter_mojom_headers=True,
+    header_mappings: Dict[str, str] = None,
 ):
     """Filter changes"""
+
+    # When header mappings are provided, we can cancel out suggestions from clangd where
+    # it suggests removing one include and adding another, when the pair is found in the
+    # mapping, since we know that means clangd is confused on which header to include
+    pending_changes: DefaultDict[str, Dict[str, Tuple[IncludeChange, int, int]]] = defaultdict(dict)
 
     for change_type_value, line, filename, header, *_ in changes:
         change_type = IncludeChange.from_value(change_type_value)
@@ -83,7 +90,37 @@ def filter_changes(
                 if ignore_edge or ignore_include:
                     continue
 
+        # If the header is in a provided header mapping, wait until the end to yield it
+        if header_mappings and header in header_mappings:
+            assert header not in pending_changes[filename]
+
+            # TODO - Includes inside of dependencies shouldn't be mapped since they can
+            #        access internal headers, and the mapped canonical header is from
+            #        the perspective of the project's root source directory
+            pending_changes[filename][header] = (change_type, line, *_)
+            continue
+
         yield (change_type_value, line, filename, header, *_)
+
+    if header_mappings:
+        inverse_header_mappings = {v: k for k, v in header_mappings.items()}
+
+        for filename in pending_changes:
+            for header in pending_changes[filename]:
+                change_type, line, *_ = pending_changes[filename][header]
+
+                if change_type is IncludeChange.ADD:
+                    # Look for a corresponding remove which would cancel out
+                    if header_mappings[header] in pending_changes[filename]:
+                        if pending_changes[filename][header][0] is IncludeChange.REMOVE:
+                            continue
+                elif change_type is IncludeChange.REMOVE and header in inverse_header_mappings:
+                    # Look for a corresponding add which would cancel out
+                    if inverse_header_mappings[header] in pending_changes[filename]:
+                        if pending_changes[filename][header][0] is IncludeChange.ADD:
+                            continue
+
+                yield (change_type.value, line, filename, header_mappings, *_)
 
 
 def main():
@@ -127,10 +164,14 @@ def main():
     else:
         change_type_filter = None
 
+    config = None
     ignores = None
 
-    if args.config and not args.no_filter_ignores:
-        ignores = load_config(args.config).ignores
+    if args.config:
+        config = load_config(args.config)
+
+    if config and not args.no_filter_ignores:
+        ignores = config.ignores
 
     csv_writer = csv.writer(sys.stdout)
 
@@ -143,6 +184,7 @@ def main():
             change_type_filter=change_type_filter,
             filter_generated_files=not args.no_filter_generated_files,
             filter_mojom_headers=not args.no_filter_mojom_headers,
+            header_mappings=config.headerMappings if config else None,
         ):
             csv_writer.writerow(change)
 

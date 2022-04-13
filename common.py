@@ -31,3 +31,4 @@ class Configuration(BaseModel):
     dependencies: Dict[str, Union[str, "Configuration"]] = {}
     includeDirs: List[str] = []
     ignores: IgnoresConfiguration = IgnoresConfiguration()
+    headerMappings: Dict[str, str] = {}

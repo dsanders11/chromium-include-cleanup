@@ -79,7 +79,6 @@
     "add": {
       "headers": [
         "base/atomicops_internals_portable.h",
-        "base/bind_internal.h",
         "base/callback_forward.h",
         "base/callback_internal.h",
         "base/hash/md5_constexpr_internal.h",
@@ -271,6 +270,8 @@
   },
   "headerMappings": {
     "absl/types/optional.h": "third_party/abseil-cpp/absl/types/optional.h",
-    "third_party/abseil-cpp/absl/types/internal/optional.h": "third_party/abseil-cpp/absl/types/optional.h"
+    "base/bind_internal.h": "base/bind.h",
+    "third_party/abseil-cpp/absl/types/internal/optional.h": "third_party/abseil-cpp/absl/types/optional.h",
+    "base/threading/scoped_blocking_call_internal.h": "base/threading/scoped_blocking_call.h"
   }
 }

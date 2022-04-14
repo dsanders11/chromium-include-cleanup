@@ -113,6 +113,7 @@
         "base/numerics/safe_math.h",
         "base/strings/string_piece.h",
         "base/trace_event/base_tracing.h",
+        "base/trace_event/base_tracing_forward.h",
         "base/trace_event/typed_macros.h",
         "base/tracing_buildflags.h",
         "build/branding_buildflags.h",
@@ -172,6 +173,10 @@
         [
           "base/memory/aligned_memory.h",
           "base/bits.h"
+        ],
+        [
+          "base/metrics/histogram_macros.h",
+          "base/time/time.h"
         ],
         [
           "base/numerics/safe_math_shared_impl.h",

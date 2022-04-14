@@ -2,7 +2,10 @@ import multiprocessing
 import os
 import pathlib
 import re
-from typing import List
+from collections import defaultdict
+from typing import DefaultDict, Dict, List
+
+import networkx as nx
 
 from common import Configuration
 from include_analysis import IncludeAnalysisOutput
@@ -66,7 +69,7 @@ def load_config(name: str):
     return config
 
 
-def get_edge_sizes(include_analysis: IncludeAnalysisOutput, include_directories: List[str] = None):
+def get_include_analysis_edge_sizes(include_analysis: IncludeAnalysisOutput, include_directories: List[str] = None):
     # Strip off the path prefix for generated file includes so matching will work
     generated_file_prefix = re.compile(r"^(?:out/\w+/gen/)?(.*)$")
 
@@ -92,3 +95,89 @@ def get_edge_sizes(include_analysis: IncludeAnalysisOutput, include_directories:
                 edge_sizes[filename][include] = size
 
     return edge_sizes
+
+
+def get_include_analysis_edge_prevalence(
+    include_analysis: IncludeAnalysisOutput, include_directories: List[str] = None
+):
+    # Strip off the path prefix for generated file includes so matching will work
+    generated_file_prefix = re.compile(r"^(?:out/\w+/gen/)?(.*)$")
+
+    files = include_analysis["files"]
+    root_count = len(include_analysis["roots"])
+    edge_prevalence: DefaultDict[str, Dict[str, float]] = defaultdict(dict)
+
+    if include_directories is None:
+        include_directories = []
+
+    for filename in files:
+        for include in include_analysis["includes"][filename]:
+            includes = [include]
+
+            # If an include is in an include directory, strip that prefix and add it for matching
+            for include_directory in include_directories:
+                include_directory = include_directory if include_directory.endswith("/") else f"{include_directory}/"
+                if include.startswith(include_directory):
+                    includes.append(include[len(include_directory) :])
+
+            for include in includes:
+                include = generated_file_prefix.match(include).group(1)
+                edge_prevalence[filename][include] = (100.0 * include_analysis["prevalence"][filename]) / root_count
+
+    return edge_prevalence
+
+
+def create_graph_from_include_analysis(include_analysis: IncludeAnalysisOutput):
+    DG = nx.DiGraph()
+
+    files = include_analysis["files"]
+
+    # Add nodes and edges to the graph
+    # XXX - Unfortunately this is pretty slow, takes several minutes to add the edges
+    for idx, filename in enumerate(files):
+        DG.add_node(idx, filename=filename)
+
+        for include in include_analysis["includes"][filename]:
+            DG.add_edge(idx, files.index(include))
+
+    return DG
+
+
+def get_include_analysis_edges_centrality(
+    include_analysis: IncludeAnalysisOutput, include_directories: List[str] = None
+):
+    # Strip off the path prefix for generated file includes so matching will work
+    generated_file_prefix = re.compile(r"^(?:out/\w+/gen/)?(.*)$")
+
+    DG: nx.DiGraph = create_graph_from_include_analysis(include_analysis)
+    nodes_in = nx.in_degree_centrality(DG)
+    nodes_out = nx.out_degree_centrality(DG)
+
+    files = include_analysis["files"]
+    edges_centrality: DefaultDict[str, Dict[str, float]] = defaultdict(dict)
+
+    if include_directories is None:
+        include_directories = []
+
+    # Centrality is a metric for a node, but we want to create a metric for an edge.
+    # For the moment, this will use a herustic which combines the in-degree centrality
+    # of the node where the edge starts, and the out-degree centrality of the node the
+    # edge is pulling into the graph. This hopefully creates a metric which lets us find
+    # edges in commonly included nodes, which pull lots of nodes into the graph.
+    for idx, filename in enumerate(files):
+        for absolute_include in include_analysis["includes"][filename]:
+            includes = [absolute_include]
+
+            # If an include is in an include directory, strip that prefix and add it for matching
+            for include_directory in include_directories:
+                include_directory = include_directory if include_directory.endswith("/") else f"{include_directory}/"
+                if absolute_include.startswith(include_directory):
+                    includes.append(absolute_include[len(include_directory) :])
+
+            for include in includes:
+                include = generated_file_prefix.match(include).group(1)
+
+                # Scale the value up so it's more human-friendly instead of having lots of leading zeroes
+                edges_centrality[filename][include] = 100000 * nodes_out[files.index(absolute_include)] * nodes_in[idx]
+
+    return edges_centrality

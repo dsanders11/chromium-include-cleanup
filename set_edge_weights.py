@@ -10,7 +10,12 @@ from typing import Dict, Iterator, Optional, Tuple
 
 from common import IncludeChange
 from include_analysis import ParseError, parse_raw_include_analysis_output
-from utils import get_edge_sizes, load_config
+from utils import (
+    get_include_analysis_edges_centrality,
+    get_include_analysis_edge_prevalence,
+    get_include_analysis_edge_sizes,
+    load_config,
+)
 
 
 def set_edge_weights(
@@ -48,7 +53,6 @@ def set_edge_weights(
         yield full_change
 
 
-# TODO - More metrics for determining the weight of an edge
 def main():
     parser = argparse.ArgumentParser(description="Set edge weights in include changes output")
     parser.add_argument(
@@ -60,6 +64,12 @@ def main():
         "include_analysis_output",
         type=argparse.FileType("r"),
         help="The include analysis output to use.",
+    )
+    parser.add_argument(
+        "--metric",
+        choices=["centrality", "input_size", "prevalence"],
+        default="input_size",
+        help="Metric to use for edge weights.",
     )
     parser.add_argument("--config", help="Name of config file to use.")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
@@ -82,11 +92,17 @@ def main():
     if args.config:
         config = load_config(args.config)
 
-    edge_sizes = get_edge_sizes(include_analysis, config.includeDirs if config else None)
     csv_writer = csv.writer(sys.stdout)
 
+    if args.metric == "input_size":
+        edge_weights = get_include_analysis_edge_sizes(include_analysis, config.includeDirs if config else None)
+    elif args.metric == "centrality":
+        edge_weights = get_include_analysis_edges_centrality(include_analysis, config.includeDirs if config else None)
+    elif args.metric == "prevalence":
+        edge_weights = get_include_analysis_edge_prevalence(include_analysis, config.includeDirs if config else None)
+
     try:
-        for row in set_edge_weights(args.changes_file, edge_sizes):
+        for row in set_edge_weights(args.changes_file, edge_weights):
             csv_writer.writerow(row)
 
         sys.stdout.flush()

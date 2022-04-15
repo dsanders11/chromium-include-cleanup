@@ -81,6 +81,7 @@
         "base/atomicops_internals_portable.h",
         "base/callback_forward.h",
         "base/callback_internal.h",
+        "base/check.h",
         "base/hash/md5_constexpr_internal.h",
         "base/metrics/histogram_macros_internal.h",
         "base/numerics/safe_conversions_impl.h",

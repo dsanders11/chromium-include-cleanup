@@ -19,7 +19,7 @@ To use these scripts, you'll need:
 * An [release of `clangd`][clangd-releases] which has "IncludeCleaner"
   (14.0.0+), or a build of `clangd` from source with the patches in this
   repository applied for expanded functionality.
-* The full output of `include_analysis.py`, see
+* The full output of `//tools/clang/scripts/analyze_includes.py`, see
   [discussion on the mailing list][include-analysis] for how to generate it
 * A compilation database for `clangd` to use, which can be generated with
   `gn gen . --export-compile-commands` in the Chromium output directory
@@ -51,7 +51,7 @@ Diagnostics:
 ## Finding Unused Includes
 
 These instructions assume you've already built and processed the build
-log with `include_analysis.py`, if you haven't, see the link above under
+log with `//tools/clang/scripts/analyze_includes.py`, if you haven't, see the link above under
 "Prerequisites". It assumes the output is at `~/include-analysis.js`, so
 adjust to taste.
 

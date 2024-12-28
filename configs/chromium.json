@@ -1,5 +1,6 @@
 {
   "includeDirs": [
+    "base/allocator/partition_allocator/src",
     "base/third_party/libevent/linux",
     "base/third_party/xdg_mime",
     "base/third_party/double_conversion",
@@ -19,6 +20,7 @@
     "third_party/leveldatabase/src",
     "third_party/leveldatabase/src/include",
     "third_party/libaom/source/libaom",
+    "third_party/libc++/src/include",
     "third_party/libvpx/source/libvpx",
     "third_party/mesa_headers",
     "third_party/pdfium",
@@ -139,6 +141,7 @@
         "mojo/public/cpp/bindings/remote.h",
         "mojo/public/cpp/system/core.h",
         "net/net_buildflags.h",
+        "partition_alloc/buildflags.h",
         "pdf/buildflags.h",
         "ppapi/buildflags/buildflags.h",
         "printing/buildflags/buildflags.h",

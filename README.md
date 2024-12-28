@@ -16,9 +16,8 @@ Scripts to help guide cleanup of #include lines in a codebase, using `clangd`
 
 To use these scripts, you'll need:
 
-* An [release of `clangd`][clangd-releases] which has "IncludeCleaner"
-  (14.0.0+), or a build of `clangd` from source with the patches in this
-  repository applied for expanded functionality.
+* A [release of `clangd`][clangd-releases] which has "IncludeCleaner" with
+  support for missing includes (17.0.0+)
 * The full output of `//tools/clang/scripts/analyze_includes.py`, see
   [discussion on the mailing list][include-analysis] for how to generate it
 * A compilation database for `clangd` to use, which can be generated with
@@ -39,12 +38,12 @@ patched with the patches in `clangd_patches` and built from source.
 
 ## `clangd` Configuration
 
-You need to enable `NeededIncludes` and `UnusedIncludes` diagnostics in a
+You need to enable `MissingIncludes` and `UnusedIncludes` diagnostics in a
 `clangd` [config file][clangd-config]:
 
 ```yaml
 Diagnostics:
-  NeededIncludes: Strict
+  MissingIncludes: Strict
   UnusedIncludes: Strict
 ```
 

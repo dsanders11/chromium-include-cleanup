@@ -116,12 +116,15 @@ def parse_includes_from_diagnostics(
 ) -> Tuple[Tuple[IncludeLine, ...], Tuple[IncludeLine, ...]]:
     """Returns a tuple of (add, remove) includes"""
 
-    add_includes: List[IncludeLine] = []
+    add_includes: Set[IncludeLine] = set()
     remove_includes: List[IncludeLine] = []
 
     # Parse include diagnostics
     for diagnostic in diagnostics:
         if diagnostic.code == "unused-includes":
+            assert diagnostic.codeActions
+            assert diagnostic.codeActions[0].title == "remove #include directive"
+
             # Only need the line number, we don't expect multi-line includes
             assert diagnostic.range.start.line == diagnostic.range.end.line
             text = document.text.splitlines()[diagnostic.range.start.line]
@@ -132,19 +135,20 @@ def parse_includes_from_diagnostics(
                 remove_includes.append((include_match.group(2), diagnostic.range.start.line))
             else:
                 logging.error(f"Couldn't match #include regex to diagnostic line: {text}")
-        elif diagnostic.code == "needed-includes":
+        elif diagnostic.code == "missing-includes":
             assert diagnostic.codeActions
-            assert len(diagnostic.codeActions) == 1
+            assert diagnostic.codeActions[0].title.startswith("#include")
             assert diagnostic.codeActions[0].edit
             assert diagnostic.codeActions[0].edit.changes
             assert len(diagnostic.codeActions[0].edit.changes[document.uri]) == 1
 
-            text = diagnostic.codeActions[0].edit.changes[document.uri][0].newText
+            textEdit = diagnostic.codeActions[0].edit.changes[document.uri][0]
+            text = textEdit.newText
             include_match = INCLUDE_REGEX.match(text)
 
             if include_match:
                 # TODO - Alias things like: absl/types/optional.h -> third_party/abseil-cpp/absl/types/optional.h
-                add_includes.append((include_match.group(1).strip('"'), diagnostic.range.start.line))
+                add_includes.add((include_match.group(1).strip('"'), textEdit.range.start.line))
             else:
                 logging.error(f"Couldn't match #include regex to diagnostic line: {text}")
 

@@ -62,12 +62,22 @@ $ gn gen . --export-compile-commands
 $ python3 ~/chromium-include-cleanup/post_process_compilation_db.py compile_commands.json > compile_commands-fixed.json
 $ mv compile_commands-fixed.json compile_commands.json
 $ cd ../../
-$ python3 ~/chromium-include-cleanup/suggest_include_changes.py --compile-commands-dir=out/Default ~/include-analysis.js > unused-edges.csv
+$ python3 ~/chromium-include-cleanup/suggest_include_changes.py --compile-commands-dir=out/Default ~/include-analysis.js > ~/unused-edges.csv
+$ python3 ~/chromium-include-cleanup/set_edge_weights.py ~/unused-edges.csv ~/include-analysis.js --config ~/chromium-include-cleanup/configs/chromium.json > ~/weighted-unused-edges.csv
 ```
 
 Another useful option is `--filename-filter=^base/`, which lets you filter the
 files which will be analyzed, which can speed things up considerably if it is
 limited to a subset of the codebase.
+
+Edge weights are set in a separate script to allow quick iteration, since
+`suggest_include_changes.py` takes many hours to run. The default metric
+for edge weights pulls the "Added Size" metric from the include analysis
+output. This means new weights can be easily be applied to the output of
+`suggest_include_changes.py` by downloading the latest hosted include
+analysis output at <https://commondatastorage.googleapis.com/chromium-browser-clang/include-analysis.js>,
+but mileage may vary since you're combining output from your local build
+and the hosted build.
 
 ## Performance
 

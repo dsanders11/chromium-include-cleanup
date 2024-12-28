@@ -42,7 +42,7 @@ async def suggest_include_changes(
     """
     Suggest includes to add or remove according to clangd and yield them
 
-    Yielded as (change, line_no, includer, included, [size])
+    Yielded as (change, line_no, includer, included)
     """
 
     suggested_changes: asyncio.Queue[Tuple[IncludeChange, str, str, Optional[int]]] = asyncio.Queue()

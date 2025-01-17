@@ -97,6 +97,36 @@ def get_include_analysis_edge_sizes(include_analysis: IncludeAnalysisOutput, inc
     return edge_sizes
 
 
+def get_include_analysis_edge_expanded_sizes(
+    include_analysis: IncludeAnalysisOutput, include_directories: List[str] = None
+):
+    # Strip off the path prefix for generated file includes so matching will work
+    generated_file_prefix = re.compile(r"^(?:out/\w+/gen/)?(.*)$")
+
+    files = include_analysis["files"]
+    root_count = len(include_analysis["roots"])
+    edge_expanded_sizes: DefaultDict[str, Dict[str, int]] = defaultdict(dict)
+
+    if include_directories is None:
+        include_directories = []
+
+    for filename in files:
+        for include in include_analysis["includes"][filename]:
+            includes = [include]
+
+            # If an include is in an include directory, strip that prefix and add it for matching
+            for include_directory in include_directories:
+                include_directory = include_directory if include_directory.endswith("/") else f"{include_directory}/"
+                if include.startswith(include_directory):
+                    includes.append(include[len(include_directory) :])
+
+            for include in includes:
+                include = generated_file_prefix.match(include).group(1)
+                edge_expanded_sizes[filename][include] = include_analysis["tsizes"][filename]
+
+    return edge_expanded_sizes
+
+
 def get_include_analysis_edge_prevalence(
     include_analysis: IncludeAnalysisOutput, include_directories: List[str] = None
 ):

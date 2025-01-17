@@ -12,6 +12,7 @@ from common import IncludeChange
 from include_analysis import ParseError, parse_raw_include_analysis_output
 from utils import (
     get_include_analysis_edges_centrality,
+    get_include_analysis_edge_expanded_sizes,
     get_include_analysis_edge_prevalence,
     get_include_analysis_edge_sizes,
     load_config,
@@ -67,7 +68,7 @@ def main():
     )
     parser.add_argument(
         "--metric",
-        choices=["centrality", "input_size", "prevalence"],
+        choices=["centrality", "expanded_size", "input_size", "prevalence"],
         default="input_size",
         help="Metric to use for edge weights.",
     )
@@ -96,6 +97,8 @@ def main():
 
     if args.metric == "input_size":
         edge_weights = get_include_analysis_edge_sizes(include_analysis, config.includeDirs if config else None)
+    elif args.metric == "expanded_size":
+        edge_weights = get_include_analysis_edge_expanded_sizes(include_analysis, config.includeDirs if config else None)
     elif args.metric == "centrality":
         edge_weights = get_include_analysis_edges_centrality(include_analysis, config.includeDirs if config else None)
     elif args.metric == "prevalence":

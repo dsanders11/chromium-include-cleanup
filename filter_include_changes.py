@@ -15,7 +15,7 @@ from utils import load_config
 Change = Tuple[IncludeChange, int, str, str, int]
 
 
-GENERATED_FILE_REGEX = re.compile(r"^out/\w+/gen/.*$")
+GENERATED_FILE_REGEX = re.compile(r"^out/[\w-]+/gen/.*$")
 MOJOM_HEADER_REGEX = re.compile(r"^.*.mojom[^.]*.h$")
 
 

@@ -29,7 +29,7 @@ def apply_changes(root_path: pathlib.Path, file_changes: Dict[str, List[Change]]
         changes = sorted(changes, key=lambda x: x[1])
         line_offset = 0
 
-        with open(filename, "r+") as f:
+        with open(root_path.joinpath(filename), "r+") as f:
             lines = f.readlines()
 
             # Apply the changes and track the line offset as changes are applied

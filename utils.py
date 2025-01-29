@@ -192,7 +192,7 @@ def get_include_analysis_edges_centrality(
         include_directories = []
 
     # Centrality is a metric for a node, but we want to create a metric for an edge.
-    # For the moment, this will use a herustic which combines the in-degree centrality
+    # For the moment, this will use a heuristic which combines the in-degree centrality
     # of the node where the edge starts, and the out-degree centrality of the node the
     # edge is pulling into the graph. This hopefully creates a metric which lets us find
     # edges in commonly included nodes, which pull lots of nodes into the graph.

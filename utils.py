@@ -104,7 +104,6 @@ def get_include_analysis_edge_expanded_sizes(
     generated_file_prefix = re.compile(r"^(?:out/\w+/gen/)?(.*)$")
 
     files = include_analysis["files"]
-    root_count = len(include_analysis["roots"])
     edge_expanded_sizes: DefaultDict[str, Dict[str, int]] = defaultdict(dict)
 
     if include_directories is None:
@@ -122,7 +121,10 @@ def get_include_analysis_edge_expanded_sizes(
 
             for include in includes:
                 include = generated_file_prefix.match(include).group(1)
-                edge_expanded_sizes[filename][include] = include_analysis["tsizes"][filename]
+                try:
+                    edge_expanded_sizes[filename][include] = include_analysis["tsizes"][include]
+                except KeyError:
+                    pass
 
     return edge_expanded_sizes
 

@@ -173,6 +173,10 @@
           "base/callback_forward.h"
         ],
         [
+          "base/check.h",
+          "base/immediate_crash.h"
+        ],
+        [
           "base/debug/crash_logging.h",
           "base/strings/string_number_conversions.h"
         ],

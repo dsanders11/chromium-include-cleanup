@@ -213,6 +213,10 @@
           "base/tracing/protos/chrome_track_event.pbzero.h"
         ],
         [
+          "base/threading/platform_thread.h",
+          "base/process/process_handle.h"
+        ],
+        [
           "chrome/browser/ui/browser.h",
           "chrome/browser/ui/signin_view_controller.h"
         ],

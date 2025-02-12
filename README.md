@@ -7,6 +7,8 @@ Scripts to help guide cleanup of #include lines in a codebase, using `clangd`
 * `apply_include_changes.py` - Apply include changes to files in the source
   tree
 * `filter_include_changes.py` - Filter include changes output
+* `list_includers.py` - List includers of a file
+* `list_transitive_includes.py` - List transitive (and direct) includes of a file
 * `post_process_compilation_db.py` - Post-process the clang compilation
   database for analysis
 * `set_edge_weights.py` - Set edge weights in include changes output

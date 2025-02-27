@@ -29,7 +29,7 @@ To use these scripts, you'll need:
 
 ### Install Dependencies
 
-```
+```shell
 $ pip install -r ~/chromium-include-cleanup/requirements.txt
 ```
 

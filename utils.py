@@ -10,6 +10,9 @@ import networkx as nx
 from common import Configuration
 from include_analysis import IncludeAnalysisOutput
 
+# Strip off the path prefix for generated file includes so matching will work
+GENERATED_FILE_PREFIX_REGEX = re.compile(r"^(?:out/\w+/gen/)?(.*)$")
+
 
 def get_worker_count():
     try:
@@ -70,9 +73,6 @@ def load_config(name: str):
 
 
 def get_include_analysis_edge_sizes(include_analysis: IncludeAnalysisOutput, include_directories: List[str] = None):
-    # Strip off the path prefix for generated file includes so matching will work
-    generated_file_prefix = re.compile(r"^(?:out/\w+/gen/)?(.*)$")
-
     edge_sizes = {}
 
     if include_directories is None:
@@ -91,7 +91,7 @@ def get_include_analysis_edge_sizes(include_analysis: IncludeAnalysisOutput, inc
                     includes.append(include[len(include_directory) :])
 
             for include in includes:
-                include = generated_file_prefix.match(include).group(1)
+                include = GENERATED_FILE_PREFIX_REGEX.match(include).group(1)
                 edge_sizes[filename][include] = size
 
     return edge_sizes
@@ -100,9 +100,6 @@ def get_include_analysis_edge_sizes(include_analysis: IncludeAnalysisOutput, inc
 def get_include_analysis_edge_expanded_sizes(
     include_analysis: IncludeAnalysisOutput, include_directories: List[str] = None
 ):
-    # Strip off the path prefix for generated file includes so matching will work
-    generated_file_prefix = re.compile(r"^(?:out/\w+/gen/)?(.*)$")
-
     files = include_analysis["files"]
     edge_expanded_sizes: DefaultDict[str, Dict[str, int]] = defaultdict(dict)
 
@@ -120,7 +117,7 @@ def get_include_analysis_edge_expanded_sizes(
                     includes.append(include[len(include_directory) :])
 
             for include in includes:
-                include = generated_file_prefix.match(include).group(1)
+                include = GENERATED_FILE_PREFIX_REGEX.match(include).group(1)
                 try:
                     edge_expanded_sizes[filename][include] = include_analysis["tsizes"][include]
                 except KeyError:
@@ -132,9 +129,6 @@ def get_include_analysis_edge_expanded_sizes(
 def get_include_analysis_edge_prevalence(
     include_analysis: IncludeAnalysisOutput, include_directories: List[str] = None
 ):
-    # Strip off the path prefix for generated file includes so matching will work
-    generated_file_prefix = re.compile(r"^(?:out/\w+/gen/)?(.*)$")
-
     files = include_analysis["files"]
     root_count = len(include_analysis["roots"])
     edge_prevalence: DefaultDict[str, Dict[str, float]] = defaultdict(dict)
@@ -153,7 +147,7 @@ def get_include_analysis_edge_prevalence(
                     includes.append(include[len(include_directory) :])
 
             for include in includes:
-                include = generated_file_prefix.match(include).group(1)
+                include = GENERATED_FILE_PREFIX_REGEX.match(include).group(1)
                 edge_prevalence[filename][include] = (100.0 * include_analysis["prevalence"][filename]) / root_count
 
     return edge_prevalence
@@ -178,9 +172,6 @@ def create_graph_from_include_analysis(include_analysis: IncludeAnalysisOutput):
 def get_include_analysis_edges_centrality(
     include_analysis: IncludeAnalysisOutput, include_directories: List[str] = None
 ):
-    # Strip off the path prefix for generated file includes so matching will work
-    generated_file_prefix = re.compile(r"^(?:out/\w+/gen/)?(.*)$")
-
     DG: nx.DiGraph = create_graph_from_include_analysis(include_analysis)
     nodes_in = nx.in_degree_centrality(DG)
     nodes_out = nx.out_degree_centrality(DG)
@@ -207,7 +198,7 @@ def get_include_analysis_edges_centrality(
                     includes.append(absolute_include[len(include_directory) :])
 
             for include in includes:
-                include = generated_file_prefix.match(include).group(1)
+                include = GENERATED_FILE_PREFIX_REGEX.match(include).group(1)
 
                 # Scale the value up so it's more human-friendly instead of having lots of leading zeroes
                 edges_centrality[filename][include] = 100000 * nodes_out[files.index(absolute_include)] * nodes_in[idx]

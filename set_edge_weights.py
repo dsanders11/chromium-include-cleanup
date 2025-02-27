@@ -8,7 +8,8 @@ import sys
 import typing
 from typing import Dict, Iterator, Optional, Tuple
 
-from common import IncludeChange
+from common import IgnoresConfiguration, IncludeChange
+from filter_include_changes import filter_changes
 from include_analysis import ParseError, parse_raw_include_analysis_output
 from utils import (
     get_include_analysis_edges_centrality,
@@ -20,13 +21,22 @@ from utils import (
 
 
 def set_edge_weights(
-    changes_file: typing.TextIO, edge_weights: Dict[str, Dict[str, int]]
+    changes_file: typing.TextIO,
+    edge_weights: Dict[str, Dict[str, int]],
+    ignores: IgnoresConfiguration = None,
+    header_mappings: Dict[str, str] = None,
 ) -> Iterator[Tuple[IncludeChange, int, str, str, Optional[int]]]:
     """Set edge weights in the include changes output"""
 
     change_type_value: str
 
-    for change_type_value, line, filename, header, *_ in csv.reader(changes_file):
+    filtered_changes = filter_changes(
+        csv.reader(changes_file),
+        ignores=ignores,
+        header_mappings=header_mappings,
+    )
+
+    for change_type_value, line, filename, header, *_ in filtered_changes:
         change_type = IncludeChange.from_value(change_type_value)
         change = (line, filename, header)
 
@@ -73,6 +83,7 @@ def main():
         help="Metric to use for edge weights.",
     )
     parser.add_argument("--config", help="Name of config file to use.")
+    parser.add_argument("--no-filter-ignores", action="store_true", help="Don't filter out ignores.")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
 
@@ -89,23 +100,31 @@ def main():
         logging.basicConfig(level=logging.DEBUG)
 
     config = None
+    ignores = None
 
     if args.config:
         config = load_config(args.config)
+
+    if config and not args.no_filter_ignores:
+        ignores = config.ignores
 
     csv_writer = csv.writer(sys.stdout)
 
     if args.metric == "input_size":
         edge_weights = get_include_analysis_edge_sizes(include_analysis, config.includeDirs if config else None)
     elif args.metric == "expanded_size":
-        edge_weights = get_include_analysis_edge_expanded_sizes(include_analysis, config.includeDirs if config else None)
+        edge_weights = get_include_analysis_edge_expanded_sizes(
+            include_analysis, config.includeDirs if config else None
+        )
     elif args.metric == "centrality":
         edge_weights = get_include_analysis_edges_centrality(include_analysis, config.includeDirs if config else None)
     elif args.metric == "prevalence":
         edge_weights = get_include_analysis_edge_prevalence(include_analysis, config.includeDirs if config else None)
 
     try:
-        for row in set_edge_weights(args.changes_file, edge_weights):
+        for row in set_edge_weights(
+            args.changes_file, edge_weights, ignores=ignores, header_mappings=config.headerMappings if config else None
+        ):
             csv_writer.writerow(row)
 
         sys.stdout.flush()

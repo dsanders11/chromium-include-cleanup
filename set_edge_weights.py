@@ -12,6 +12,7 @@ from common import IgnoresConfiguration, IncludeChange
 from filter_include_changes import filter_changes
 from include_analysis import ParseError, parse_raw_include_analysis_output
 from utils import (
+    GENERATED_FILE_PREFIX_REGEX,
     get_include_analysis_edges_centrality,
     get_include_analysis_edge_expanded_sizes,
     get_include_analysis_edge_prevalence,
@@ -36,18 +37,22 @@ def set_edge_weights(
         header_mappings=header_mappings,
     )
 
-    for change_type_value, line, filename, header, *_ in filtered_changes:
+    for change_type_value, line, filename, include, *_ in filtered_changes:
         change_type = IncludeChange.from_value(change_type_value)
-        change = (line, filename, header)
+        change = (line, filename, include)
 
         if change_type is IncludeChange.REMOVE:
+            # Strip off the path prefix for generated file includes so matching will work
+            filename = GENERATED_FILE_PREFIX_REGEX.match(filename).group(1)
+            include = GENERATED_FILE_PREFIX_REGEX.match(include).group(1)
+
             # For now, only removes have edge weights
             if filename not in edge_weights:
                 logging.warning(f"Skipping filename not found in weights, file may be removed: {filename}")
-            elif header not in edge_weights[filename]:
-                logging.warning(f"Skipping edge not found in weights: {filename},{header}")
+            elif include not in edge_weights[filename]:
+                logging.warning(f"Skipping edge not found in weights: {filename},{include}")
             else:
-                change = change + (edge_weights[filename][header],)
+                change = change + (edge_weights[filename][include],)
         elif change_type is IncludeChange.ADD:
             # TODO - Some metric for how important they are to add, if there
             #        is one? Maybe something like the ratio of occurrences to

@@ -82,6 +82,7 @@ def get_include_analysis_edge_sizes(include_analysis: IncludeAnalysisOutput, inc
         edge_sizes[filename] = {}
 
         for include, size in include_analysis["esizes"][filename].items():
+            filename = GENERATED_FILE_PREFIX_REGEX.match(filename).group(1)
             includes = [include]
 
             # If an include is in an include directory, strip that prefix and add it to edge sizes for matching
@@ -108,6 +109,7 @@ def get_include_analysis_edge_expanded_sizes(
 
     for filename in files:
         for include in include_analysis["includes"][filename]:
+            filename = GENERATED_FILE_PREFIX_REGEX.match(filename).group(1)
             includes = [include]
 
             # If an include is in an include directory, strip that prefix and add it for matching
@@ -138,6 +140,8 @@ def get_include_analysis_edge_prevalence(
 
     for filename in files:
         for include in include_analysis["includes"][filename]:
+            prevalence = include_analysis["prevalence"][filename]
+            filename = GENERATED_FILE_PREFIX_REGEX.match(filename).group(1)
             includes = [include]
 
             # If an include is in an include directory, strip that prefix and add it for matching
@@ -148,7 +152,7 @@ def get_include_analysis_edge_prevalence(
 
             for include in includes:
                 include = GENERATED_FILE_PREFIX_REGEX.match(include).group(1)
-                edge_prevalence[filename][include] = (100.0 * include_analysis["prevalence"][filename]) / root_count
+                edge_prevalence[filename][include] = (100.0 * prevalence) / root_count
 
     return edge_prevalence
 
@@ -189,6 +193,7 @@ def get_include_analysis_edges_centrality(
     # edges in commonly included nodes, which pull lots of nodes into the graph.
     for idx, filename in enumerate(files):
         for absolute_include in include_analysis["includes"][filename]:
+            filename = GENERATED_FILE_PREFIX_REGEX.match(filename).group(1)
             includes = [absolute_include]
 
             # If an include is in an include directory, strip that prefix and add it for matching

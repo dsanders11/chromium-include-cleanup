@@ -50,7 +50,12 @@ def set_edge_weights(
             if filename not in edge_weights:
                 logging.warning(f"Skipping filename not found in weights, file may be removed: {filename}")
             elif include not in edge_weights[filename]:
-                logging.warning(f"Skipping edge not found in weights: {filename},{include}")
+                # Include may be a relative filename
+                absolute_path = os.path.join(os.path.dirname(filename), include)
+                if absolute_path not in edge_weights[filename]:
+                    logging.warning(f"Skipping edge not found in weights: {filename},{include}")
+                else:
+                    include = absolute_path
             else:
                 change = change + (edge_weights[filename][include],)
         elif change_type is IncludeChange.ADD:

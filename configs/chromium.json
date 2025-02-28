@@ -207,6 +207,10 @@
           "base/debug/alias.h"
         ],
         [
+          "base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/numerics/clamped_math_impl.h",
+          "partition_alloc/partition_alloc_base/numerics/checked_math.h"
+        ],
+        [
           "base/allocator/partition_allocator/src/partition_alloc/partition_alloc_check.h",
           "partition_alloc/partition_alloc_base/debug/alias.h"
         ],
@@ -325,6 +329,10 @@
         [
           "mojo/public/cpp/bindings/lib/serialization.h",
           "mojo/public/cpp/bindings/map_traits_stl.h"
+        ],
+        [
+          "mojo/public/cpp/bindings/lib/validation_util.h",
+          "mojo/public/cpp/bindings/lib/serialization_util.h"
         ],
         [
           "services/network/public/cpp/url_request_mojom_traits.h",

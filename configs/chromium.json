@@ -207,6 +207,10 @@
           "base/debug/alias.h"
         ],
         [
+          "base/allocator/partition_allocator/src/partition_alloc/partition_alloc_check.h",
+          "partition_alloc/partition_alloc_base/debug/alias.h"
+        ],
+        [
           "base/allocator/partition_allocator/src/partition_alloc/pointers/instance_tracer.h",
           "atomic"
         ],
@@ -235,6 +239,10 @@
           "base/hash/md5_constexpr_internal.h"
         ],
         [
+          "base/logging.h",
+          "base/strings/utf_ostream_operators.h"
+        ],
+        [
           "base/memory/aligned_memory.h",
           "base/bits.h"
         ],
@@ -257,6 +265,18 @@
         [
           "base/numerics/safe_math_shared_impl.h",
           "base/numerics/safe_math_clang_gcc_impl.h"
+        ],
+        [
+          "base/trace_event/trace_event.h",
+          "base/trace_event/traced_value_support.h"
+        ],
+        [
+          "base/trace_event/trace_log.h",
+          "third_party/perfetto/include/perfetto/tracing/core/trace_config.h"
+        ],
+        [
+          "base/trace_event/typed_macros.h",
+          "base/trace_event/trace_event.h"
         ],
         [
           "base/trace_event/typed_macros.h",
@@ -296,6 +316,14 @@
         ],
         [
           "mojo/public/cpp/bindings/lib/serialization.h",
+          "mojo/public/cpp/bindings/lib/handle_serialization.h"
+        ],
+        [
+          "mojo/public/cpp/bindings/lib/serialization.h",
+          "mojo/public/cpp/bindings/lib/map_serialization.h"
+        ],
+        [
+          "mojo/public/cpp/bindings/lib/serialization.h",
           "mojo/public/cpp/bindings/map_traits_stl.h"
         ],
         [
@@ -305,6 +333,10 @@
         [
           "skia/config/SkUserConfig.h",
           "skia/ext/skia_histogram.h"
+        ],
+        [
+          "skia/ext/skia_histogram.h",
+          "memory"
         ],
         [
           "third_party/blink/renderer/core/dom/events/event_target.h",
@@ -321,6 +353,10 @@
         [
           "third_party/blink/renderer/core/probe/core_probes.h",
           "third_party/blink/renderer/core/core_probes_inl.h"
+        ],
+        [
+          "third_party/blink/renderer/platform/bindings/trace_wrapper_v8_reference.h",
+          "v8/include/v8-cppgc.h"
         ],
         [
           "third_party/blink/renderer/platform/wtf/allocator/allocator.h",

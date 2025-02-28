@@ -17,6 +17,7 @@ Change = Tuple[IncludeChange, int, str, str, int]
 
 GENERATED_FILE_REGEX = re.compile(r"^out/[\w-]+/gen/.*$")
 MOJOM_HEADER_REGEX = re.compile(r"^.*.mojom[^.]*.h$")
+THIRD_PARTY_REGEX = re.compile(r"^(?:third_party\/(?!blink)|v8).*$")
 
 
 def filter_changes(
@@ -27,6 +28,7 @@ def filter_changes(
     change_type_filter: IncludeChange = None,
     filter_generated_files=True,
     filter_mojom_headers=True,
+    filter_third_party=False,
     header_mappings: Dict[str, str] = None,
 ):
     """Filter changes"""
@@ -55,6 +57,9 @@ def filter_changes(
             continue
 
         if filter_generated_files and GENERATED_FILE_REGEX.match(filename):
+            continue
+
+        if filter_third_party and THIRD_PARTY_REGEX.match(filename):
             continue
 
         if filter_mojom_headers and MOJOM_HEADER_REGEX.match(header):

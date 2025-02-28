@@ -7,12 +7,12 @@ import os
 import re
 import sys
 from collections import defaultdict
-from typing import DefaultDict, Dict, List, Tuple
+from typing import DefaultDict, Dict, List, Optional, Tuple
 
 from common import IgnoresConfiguration, IncludeChange
 from utils import load_config
 
-Change = Tuple[IncludeChange, int, str, str, int]
+Change = Tuple[IncludeChange, int, str, str, Optional[str]]
 
 
 GENERATED_FILE_REGEX = re.compile(r"^out/[\w-]+/gen/.*$")
@@ -30,15 +30,21 @@ def filter_changes(
     filter_mojom_headers=True,
     filter_third_party=False,
     header_mappings: Dict[str, str] = None,
+    weight_threshold: float = None,
 ):
     """Filter changes"""
 
     # When header mappings are provided, we can cancel out suggestions from clangd where
     # it suggests removing one include and adding another, when the pair is found in the
     # mapping, since we know that means clangd is confused on which header to include
-    pending_changes: DefaultDict[str, Dict[str, Tuple[IncludeChange, int, int]]] = defaultdict(dict)
+    pending_changes: DefaultDict[str, Dict[str, Tuple[IncludeChange, int, Optional[str]]]] = defaultdict(dict)
 
     for change_type_value, line, filename, header, *_ in changes:
+        # Weight value may or may not be present
+        if weight_threshold:
+            if len(_) == 0 or (len(_) == 1 and float(_[0]) < weight_threshold):
+                continue
+
         change_type = IncludeChange.from_value(change_type_value)
 
         if change_type is None:
@@ -137,6 +143,9 @@ def main():
     parser.add_argument("--filename-filter", help="Regex to filter which files have changes outputted.")
     parser.add_argument("--header-filter", help="Regex to filter which headers are included in the changes.")
     parser.add_argument("--config", help="Name of config file to use.")
+    parser.add_argument(
+        "--weight-threshold", type=float, help="Filter out changes with a weight value below the threshold."
+    )
     parser.add_argument("--no-filter-generated-files", action="store_true", help="Don't filter out generated files.")
     parser.add_argument("--no-filter-mojom-headers", action="store_true", help="Don't filter out mojom headers.")
     parser.add_argument("--no-filter-ignores", action="store_true", help="Don't filter out ignores.")
@@ -189,6 +198,7 @@ def main():
             filter_generated_files=not args.no_filter_generated_files,
             filter_mojom_headers=not args.no_filter_mojom_headers,
             header_mappings=config.headerMappings if config else None,
+            weight_threshold=args.weight_threshold,
         ):
             csv_writer.writerow(change)
 

@@ -207,6 +207,10 @@
           "base/debug/alias.h"
         ],
         [
+          "base/allocator/partition_allocator/src/partition_alloc/pointers/instance_tracer.h",
+          "atomic"
+        ],
+        [
           "base/atomicops.h",
           "base/atomicops_internals_portable.h"
         ],
@@ -237,6 +241,10 @@
         [
           "base/metrics/histogram_macros.h",
           "base/time/time.h"
+        ],
+        [
+          "base/notreached.h",
+          "base/notimplemented.h"
         ],
         [
           "base/numerics/checked_math_impl.h",

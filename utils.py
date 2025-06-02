@@ -73,14 +73,12 @@ def load_config(name: str):
 
 
 def get_include_analysis_edge_sizes(include_analysis: IncludeAnalysisOutput, include_directories: List[str] = None):
-    edge_sizes = {}
+    edge_sizes: DefaultDict[str, Dict[str, int]] = defaultdict(dict)
 
     if include_directories is None:
         include_directories = []
 
     for filename in include_analysis["esizes"]:
-        edge_sizes[filename] = {}
-
         for include, size in include_analysis["esizes"][filename].items():
             filename = GENERATED_FILE_PREFIX_REGEX.match(filename).group(1)
             includes = [include]

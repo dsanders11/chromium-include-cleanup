@@ -31,7 +31,7 @@ jobs:
       - name: Find Priority Unused Includes
         run: |
           python set_edge_weights.py unused-includes.csv include-analysis.js --config chromium --filter-third-party > weighted-unused-includes.csv
-          python filter_include_changes.py weighted-unused-includes.csv --config chromium --weight-threshold 15000000 > priority-unused-includes.csv
+          python filter_include_changes.py weighted-unused-includes.csv --config chromium --weight-threshold 10000000 > priority-unused-includes.csv
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: weighted-unused-includes
@@ -44,9 +44,12 @@ jobs:
             const cache = require('@actions/cache');
 
             const data = fs.readFileSync('./priority-unused-includes.csv', 'utf8').trim();
+            let totalAddedSize = 0;
             const unusedIncludes = await Promise.all(data.split('\n').map(async (line) => {
               const [,, filename, include, added_size] = line.trim().split(',');
+              const addedSize = parseInt(added_size);
               let status = ':eyes: New';
+              totalAddedSize += addedSize;
 
               // Check if this is known from a previous run
               const cacheKey = `prioritize-unused-chromium-${filename}-${include}`;
@@ -63,11 +66,14 @@ jobs:
                 await cache.saveCache(['/dev/null'], cacheKey);
               }
 
-              return [`${filename} --> ${include}`, parseInt(added_size), status];
+              return [`${filename} --> ${include}`, addedSize, status];
             }));
 
             if (unusedIncludes.length > 0) {
               core.summary.addHeading('✂️ Priority Unused Chromium Includes');
+              core.summary.addRaw(`Found ${unusedIncludes.length} unused includes over 10 MB of added size for a total of ${totalAddedSize.toLocaleString()} bytes of added size`);
+              core.summary.addBreak();
+              core.summary.addBreak();
               core.summary.addTable([
                 [
                   { data: 'Include Edge', header: true },

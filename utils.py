@@ -207,3 +207,27 @@ def get_include_analysis_edges_centrality(
                 edges_centrality[filename][include] = 100000 * nodes_out[files.index(absolute_include)] * nodes_in[idx]
 
     return edges_centrality
+
+
+def get_include_analysis_edge_includer_size(include_analysis: IncludeAnalysisOutput, include_directories: List[str] = None):
+    edge_sizes: DefaultDict[str, Dict[str, int]] = defaultdict(dict)
+
+    if include_directories is None:
+        include_directories = []
+
+    for filename in include_analysis["esizes"]:
+        for include, _ in include_analysis["esizes"][filename].items():
+            filename = GENERATED_FILE_PREFIX_REGEX.match(filename).group(1)
+            includes = [include]
+
+            # If an include is in an include directory, strip that prefix and add it to edge sizes for matching
+            for include_directory in include_directories:
+                include_directory = include_directory if include_directory.endswith("/") else f"{include_directory}/"
+                if include.startswith(include_directory):
+                    includes.append(include[len(include_directory) :])
+
+            for include in includes:
+                include = GENERATED_FILE_PREFIX_REGEX.match(include).group(1)
+                edge_sizes[filename][include] = include_analysis["sizes"][filename]
+
+    return edge_sizes

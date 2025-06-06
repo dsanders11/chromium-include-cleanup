@@ -15,6 +15,7 @@ from utils import (
     GENERATED_FILE_PREFIX_REGEX,
     get_include_analysis_edges_centrality,
     get_include_analysis_edge_expanded_sizes,
+    get_include_analysis_edge_includer_size,
     get_include_analysis_edge_prevalence,
     get_include_analysis_edge_sizes,
     load_config,
@@ -90,7 +91,7 @@ def main():
     )
     parser.add_argument(
         "--metric",
-        choices=["centrality", "expanded_size", "input_size", "prevalence"],
+        choices=["centrality", "expanded_size", "includer_size", "input_size", "prevalence"],
         default="input_size",
         help="Metric to use for edge weights.",
     )
@@ -133,6 +134,8 @@ def main():
         edge_weights = get_include_analysis_edges_centrality(include_analysis, config.includeDirs if config else None)
     elif args.metric == "prevalence":
         edge_weights = get_include_analysis_edge_prevalence(include_analysis, config.includeDirs if config else None)
+    elif args.metric == "includer_size":
+        edge_weights = get_include_analysis_edge_includer_size(include_analysis, config.includeDirs if config else None)
 
     try:
         for row in set_edge_weights(

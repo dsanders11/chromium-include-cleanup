@@ -307,6 +307,10 @@
           "base/task/common/task_annotator.h"
         ],
         [
+          "gpu/command_buffer/service/gles2_cmd_validation.h",
+          "gpu/command_buffer/common/gles2_cmd_format.h"
+        ],
+        [
           "gpu/command_buffer/service/gl_utils.h",
           "ui/gl/gl_bindings.h"
         ],
@@ -328,11 +332,23 @@
         ],
         [
           "mojo/public/cpp/bindings/lib/serialization.h",
+          "mojo/public/cpp/bindings/map_traits_flat_map.h"
+        ],
+        [
+          "mojo/public/cpp/bindings/lib/serialization.h",
           "mojo/public/cpp/bindings/map_traits_stl.h"
+        ],
+        [
+          "mojo/public/cpp/bindings/lib/serialization.h",
+          "mojo/public/cpp/bindings/string_traits_string_piece.h"
         ],
         [
           "mojo/public/cpp/bindings/lib/validation_util.h",
           "mojo/public/cpp/bindings/lib/serialization_util.h"
+        ],
+        [
+          "mojo/public/cpp/bindings/lib/wtf_serialization.h",
+          "mojo/public/cpp/bindings/string_traits_wtf.h"
         ],
         [
           "services/network/public/cpp/url_request_mojom_traits.h",
@@ -385,6 +401,10 @@
         [
           "ui/accessibility/ax_tree.h",
           "base/metrics/histogram_functions.h"
+        ],
+        [
+          "ui/base/metadata/metadata_macros_internal.h",
+          "ui/base/metadata/property_metadata.h"
         ],
         [
           "ui/gfx/image/image_skia_rep.h",

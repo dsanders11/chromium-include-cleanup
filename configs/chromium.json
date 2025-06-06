@@ -252,6 +252,10 @@
         ],
         [
           "base/metrics/histogram_macros.h",
+          "base/metrics/histogram_macros_local.h"
+        ],
+        [
+          "base/metrics/histogram_macros.h",
           "base/time/time.h"
         ],
         [
@@ -340,11 +344,23 @@
         ],
         [
           "mojo/public/cpp/bindings/lib/serialization.h",
+          "mojo/public/cpp/bindings/string_traits_stl.h"
+        ],
+        [
+          "mojo/public/cpp/bindings/lib/serialization.h",
           "mojo/public/cpp/bindings/string_traits_string_piece.h"
+        ],
+        [
+          "mojo/public/cpp/bindings/lib/serialization_forward.h",
+          "mojo/public/cpp/bindings/array_traits.h"
         ],
         [
           "mojo/public/cpp/bindings/lib/validation_util.h",
           "mojo/public/cpp/bindings/lib/serialization_util.h"
+        ],
+        [
+          "mojo/public/cpp/bindings/lib/wtf_serialization.h",
+          "mojo/public/cpp/bindings/map_traits_wtf_hash_map.h"
         ],
         [
           "mojo/public/cpp/bindings/lib/wtf_serialization.h",
@@ -413,6 +429,14 @@
         [
           "ui/gfx/image/image_skia_rep_default.h",
           "cc/paint/paint_op_buffer.h"
+        ],
+        [
+          "ui/gfx/ipc/color/gfx_param_traits.h",
+          "ui/gfx/ipc/color/gfx_param_traits_macros.h"
+        ],
+        [
+          "ui/gfx/ipc/color/gfx_param_traits_macros.h",
+          "ipc/ipc_message_utils.h"
         ]
       ]
     }

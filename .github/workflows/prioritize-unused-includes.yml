@@ -32,10 +32,18 @@ jobs:
         run: |
           python set_edge_weights.py unused-includes.csv include-analysis.js --config chromium --filter-third-party > weighted-unused-includes.csv
           python filter_include_changes.py weighted-unused-includes.csv --config chromium --weight-threshold 10000000 > priority-unused-includes.csv
+          python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric expanded_size > priority-unused-includes.expanded_size.csv
+          python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric prevalence > priority-unused-includes.prevalence.csv
+          python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric includer_size > priority-unused-includes.includer_size.csv
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: weighted-unused-includes
-          path: weighted-unused-includes.csv
+          path: |
+            weighted-unused-includes.csv
+            priority-unused-includes.csv
+            priority-unused-includes.expanded_size.csv
+            priority-unused-includes.prevalence.csv
+            priority-unused-includes.includer_size.csv
       - run: npm install @actions/cache
       - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
@@ -44,11 +52,14 @@ jobs:
             const cache = require('@actions/cache');
 
             const data = fs.readFileSync('./priority-unused-includes.csv', 'utf8').trim();
+            const expandedSizeData = fs.readFileSync('./priority-unused-includes.expanded_size.csv', 'utf8').trim().split('\n');
+            const prevalenceData = fs.readFileSync('./priority-unused-includes.prevalence.csv', 'utf8').trim().split('\n');
+            const includerSizeData = fs.readFileSync('./priority-unused-includes.includer_size.csv', 'utf8').trim().split('\n');
             let totalAddedSize = 0;
-            const unusedIncludes = await Promise.all(data.split('\n').map(async (line) => {
+
+            const unusedIncludes = await Promise.all(data.split('\n').map(async (line, idx) => {
               const [,, filename, include, added_size] = line.trim().split(',');
               const addedSize = parseInt(added_size);
-              let status = ':eyes: New';
               totalAddedSize += addedSize;
 
               // Check if this is known from a previous run
@@ -58,33 +69,59 @@ jobs:
                   lookupOnly: true,
                 })) !== undefined;
 
-              if (cacheHit) {
-                status = ''; // It's somewhat nicer visually to leave this blank
-              } else {
+              if (!cacheHit) {
                 // Create a cache entry (only the name matters) to keep track of
                 // includes we've seen from previous runs to mark them as stale
                 await cache.saveCache(['/dev/null'], cacheKey);
               }
 
-              return [`${filename} --> ${include}`, addedSize, status];
+              return [
+                `${filename} --> ${include}`,
+                addedSize,
+                parseFloat(prevalenceData[idx].trim().split(',')[4]),
+                parseInt(expandedSizeData[idx].trim().split(',')[4]),
+                parseInt(includerSizeData[idx].trim().split(',')[4]),
+                cacheHit,
+              ];
             }));
+
+            const addTable = (includes) => {
+              core.summary.addTable([
+                [
+                  { data: 'Include Edge', header: true },
+                  { data: 'Added Size', header: true },
+                  { data: 'Prevalence', header: true },
+                  { data: 'Expanded Size', header: true },
+                  { data: 'Includer Size', header: true },
+                ],
+                // Sort by added size, then convert it back to string or it won't render
+                ...includes
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([edge, added_size, prevalence, expandedSize, includerSize]) => [
+                    edge,
+                    added_size.toLocaleString(),
+                    `${prevalence.toFixed(2)}%`,
+                    expandedSize.toLocaleString(),
+                    includerSize.toLocaleString(),
+                  ]),
+              ]);
+            }
 
             if (unusedIncludes.length > 0) {
               core.summary.addHeading('✂️ Priority Unused Chromium Includes');
               core.summary.addRaw(`Found ${unusedIncludes.length} unused includes over 10 MB of added size for a total of ${totalAddedSize.toLocaleString()} bytes of added size`);
               core.summary.addBreak();
-              core.summary.addBreak();
-              core.summary.addTable([
-                [
-                  { data: 'Include Edge', header: true },
-                  { data: 'Added Size', header: true },
-                  { data: 'Status', header: true },
-                ],
-                // Sort by added size, then convert it back to string or it won't render
-                ...unusedIncludes
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([edge, added_size, status]) => [edge, added_size.toLocaleString(), status]),
-              ]);
+
+              const newlySeen = unusedIncludes.filter(([, , , , cacheHit]) => !cacheHit)
+              if (newlySeen.length > 0) {
+                core.summary.addHeading('Not Seen Before', '2');
+                addTable(newlySeen);
+                core.summary.addHeading('All Unused Includes', '2');
+              } else {
+                core.summary.addBreak();
+              }
+
+              addTable(unusedIncludes);
             } else {
               core.summary.addRaw('🎉 No priority unused Chromium includes');
             }

@@ -275,6 +275,10 @@
           "base/numerics/safe_math_clang_gcc_impl.h"
         ],
         [
+          "base/trace_event/base_tracing_forward.h",
+          "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+        ],
+        [
           "base/trace_event/trace_event.h",
           "base/trace_event/traced_value_support.h"
         ],
@@ -393,6 +397,10 @@
         [
           "third_party/blink/renderer/core/probe/core_probes.h",
           "third_party/blink/renderer/core/core_probes_inl.h"
+        ],
+        [
+          "third_party/blink/renderer/modules/event_modules.h",
+          "third_party/blink/renderer/core/dom/events/event.h"
         ],
         [
           "third_party/blink/renderer/platform/bindings/trace_wrapper_v8_reference.h",

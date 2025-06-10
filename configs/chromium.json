@@ -211,6 +211,10 @@
           "partition_alloc/partition_alloc_base/numerics/checked_math.h"
         ],
         [
+          "base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/numerics/safe_math_shared_impl.h",
+          "partition_alloc/partition_alloc_base/numerics/safe_math_clang_gcc_impl.h"
+        ],
+        [
           "base/allocator/partition_allocator/src/partition_alloc/partition_alloc_check.h",
           "partition_alloc/partition_alloc_base/debug/alias.h"
         ],
@@ -409,6 +413,10 @@
         [
           "third_party/blink/renderer/platform/wtf/allocator/allocator.h",
           "base/allocator/partition_allocator/partition_alloc.h"
+        ],
+        [
+          "third_party/blink/renderer/platform/wtf/allocator/allocator.h",
+          "third_party/blink/renderer/platform/wtf/allocator/partitions.h"
         ],
         [
           "third_party/blink/renderer/platform/wtf/hash_table.h",

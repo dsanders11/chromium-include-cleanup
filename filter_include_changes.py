@@ -146,6 +146,7 @@ def main():
     parser.add_argument(
         "--weight-threshold", type=float, help="Filter out changes with a weight value below the threshold."
     )
+    parser.add_argument("--filter-third-party", action="store_true", help="Filter out third_party/ (excluding blink) and v8.")
     parser.add_argument("--no-filter-generated-files", action="store_true", help="Don't filter out generated files.")
     parser.add_argument("--no-filter-mojom-headers", action="store_true", help="Don't filter out mojom headers.")
     parser.add_argument("--no-filter-ignores", action="store_true", help="Don't filter out ignores.")
@@ -197,6 +198,7 @@ def main():
             change_type_filter=change_type_filter,
             filter_generated_files=not args.no_filter_generated_files,
             filter_mojom_headers=not args.no_filter_mojom_headers,
+            filter_third_party=args.filter_third_party,
             header_mappings=config.headerMappings if config else None,
             weight_threshold=args.weight_threshold,
         ):

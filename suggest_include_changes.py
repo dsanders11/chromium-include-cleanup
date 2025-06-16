@@ -11,11 +11,18 @@ from typing import AsyncIterator, Callable, List, Optional, Tuple
 
 from clangd_lsp import ClangdClient, ClangdCrashed
 from common import IncludeChange
+from filter_include_changes import GENERATED_FILE_REGEX, MOJOM_HEADER_REGEX, THIRD_PARTY_REGEX
 from include_analysis import ParseError, parse_raw_include_analysis_output
 from utils import get_worker_count
 
 
-def filter_filenames(filenames: List[str], filename_filter: re.Pattern = None) -> List[str]:
+def filter_filenames(
+    filenames: List[str],
+    filename_filter: re.Pattern = None, 
+    filter_generated_files=False,
+    filter_mojom_headers=False,
+    filter_third_party=False
+) -> List[str]:
     # Filter out some files we know we don't want to process, like the system headers, and non-source files
     # Further filter the filenames if a filter was provided, so not all files are processed
     return [
@@ -31,6 +38,9 @@ def filter_filenames(filenames: List[str], filename_filter: re.Pattern = None) -
         and not filename.endswith(".S")
         and "/usr/include/c++/" not in filename
         and (not filename_filter or (filename_filter and filename_filter.match(filename)))
+        and (not filter_generated_files or not GENERATED_FILE_REGEX.match(filename))
+        and (not filter_mojom_headers or not MOJOM_HEADER_REGEX.match(filename))
+        and (not filter_third_party or not THIRD_PARTY_REGEX.match(filename))
     ]
 
 
@@ -123,6 +133,9 @@ async def main():
     parser.add_argument(
         "--restart-clangd-after", type=int, default=350, help="Restart clangd every N files processed."
     )
+    parser.add_argument("--filter-third-party", action="store_true", help="Filter out third_party/ (excluding blink) and v8.")
+    parser.add_argument("--filter-generated-files", action="store_true", help="Filter out generated files.")
+    parser.add_argument("--filter-mojom-headers", action="store_true", help="Filter out mojom headers.")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
 
@@ -154,7 +167,13 @@ async def main():
         print("error: Must have a .clangd config with IncludeCleaner enabled")
         return 3
 
-    filenames = filter_filenames(include_analysis["files"], filename_filter)
+    filenames = filter_filenames(
+        include_analysis["files"],
+        filename_filter,
+        filter_generated_files=args.filter_generated_files,
+        filter_mojom_headers=args.filter_mojom_headers,
+        filter_third_party=args.filter_third_party,
+    )
 
     async def start_clangd_client():
         clangd_client = ClangdClient(

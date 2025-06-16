@@ -35,7 +35,9 @@ def filter_filenames(
         and not filename.endswith(".inc")
         and not filename.endswith(".inl")
         and not filename.endswith(".s")
+        and not filename.endswith(".sksl")
         and not filename.endswith(".S")
+        and not filename.startswith("third_party/libc++/")
         and "/usr/include/c++/" not in filename
         and (not filename_filter or (filename_filter and filename_filter.match(filename)))
         and (not filter_generated_files or not GENERATED_FILE_REGEX.match(filename))

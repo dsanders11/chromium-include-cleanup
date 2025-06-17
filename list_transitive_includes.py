@@ -97,7 +97,7 @@ def main():
 
             expand_includes(args.filename, include)
 
-        for (includer, included) in edges:
+        for includer, included in edges:
             # If include changes are provided, skip edges which are not unused
             if args.include_changes and (includer, included) not in unused_edges:
                 continue

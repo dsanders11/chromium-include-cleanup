@@ -21,9 +21,11 @@ def post_process_compilation_database(compilation_database: list):
     return [
         {
             **entry,
-            "command": " ".join(entry["command"].split(f" {TRACE_INCLUDES_FLAG} "))
-            if f" {TRACE_INCLUDES_FLAG} " in entry["command"]
-            else entry["command"],
+            "command": (
+                " ".join(entry["command"].split(f" {TRACE_INCLUDES_FLAG} "))
+                if f" {TRACE_INCLUDES_FLAG} " in entry["command"]
+                else entry["command"]
+            ),
         }
         for entry in compilation_database
         if "native_client" not in entry["command"]

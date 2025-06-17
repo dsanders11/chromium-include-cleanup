@@ -96,7 +96,9 @@ def main():
         help="Metric to use for edge weights.",
     )
     parser.add_argument("--config", help="Name of config file to use.")
-    parser.add_argument("--filter-third-party", action="store_true", help="Filter out third_party/ (excluding blink) and v8.")
+    parser.add_argument(
+        "--filter-third-party", action="store_true", help="Filter out third_party/ (excluding blink) and v8."
+    )
     parser.add_argument("--no-filter-ignores", action="store_true", help="Don't filter out ignores.")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
@@ -135,11 +137,17 @@ def main():
     elif args.metric == "prevalence":
         edge_weights = get_include_analysis_edge_prevalence(include_analysis, config.includeDirs if config else None)
     elif args.metric == "includer_size":
-        edge_weights = get_include_analysis_edge_includer_size(include_analysis, config.includeDirs if config else None)
+        edge_weights = get_include_analysis_edge_includer_size(
+            include_analysis, config.includeDirs if config else None
+        )
 
     try:
         for row in set_edge_weights(
-            args.changes_file, edge_weights, filter_third_party=args.filter_third_party, ignores=ignores, header_mappings=config.headerMappings if config else None
+            args.changes_file,
+            edge_weights,
+            filter_third_party=args.filter_third_party,
+            ignores=ignores,
+            header_mappings=config.headerMappings if config else None,
         ):
             csv_writer.writerow(row)
 

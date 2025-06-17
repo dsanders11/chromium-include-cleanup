@@ -209,7 +209,9 @@ def get_include_analysis_edges_centrality(
     return edges_centrality
 
 
-def get_include_analysis_edge_includer_size(include_analysis: IncludeAnalysisOutput, include_directories: List[str] = None):
+def get_include_analysis_edge_includer_size(
+    include_analysis: IncludeAnalysisOutput, include_directories: List[str] = None
+):
     edge_sizes: DefaultDict[str, Dict[str, int]] = defaultdict(dict)
 
     if include_directories is None:

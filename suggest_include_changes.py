@@ -18,10 +18,10 @@ from utils import get_worker_count
 
 def filter_filenames(
     filenames: List[str],
-    filename_filter: re.Pattern = None, 
+    filename_filter: re.Pattern = None,
     filter_generated_files=False,
     filter_mojom_headers=False,
-    filter_third_party=False
+    filter_third_party=False,
 ) -> List[str]:
     # Filter out some files we know we don't want to process, like the system headers, and non-source files
     # Further filter the filenames if a filter was provided, so not all files are processed
@@ -67,7 +67,7 @@ async def suggest_include_changes(
                 add, remove = await clangd_client.get_include_suggestions(filename)
 
                 for changes, op in ((add, IncludeChange.ADD), (remove, IncludeChange.REMOVE)):
-                    for (include, line) in changes:
+                    for include, line in changes:
                         suggested_changes.put_nowait(
                             (
                                 op,
@@ -120,9 +120,7 @@ async def main():
         help="The include analysis output to use (- for stdin).",
     )
     parser.add_argument(
-        "filenames",
-        nargs="*",
-        help="File(s) to suggest includes for - if not specified, all files are checked."
+        "filenames", nargs="*", help="File(s) to suggest includes for - if not specified, all files are checked."
     )
     parser.add_argument(
         "--clangd-path",
@@ -140,7 +138,9 @@ async def main():
     parser.add_argument(
         "--restart-clangd-after", type=int, default=350, help="Restart clangd every N files processed."
     )
-    parser.add_argument("--filter-third-party", action="store_true", help="Filter out third_party/ (excluding blink) and v8.")
+    parser.add_argument(
+        "--filter-third-party", action="store_true", help="Filter out third_party/ (excluding blink) and v8."
+    )
     parser.add_argument("--filter-generated-files", action="store_true", help="Filter out generated files.")
     parser.add_argument("--filter-mojom-headers", action="store_true", help="Filter out mojom headers.")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
@@ -197,7 +197,9 @@ async def main():
 
     csv_writer = csv.writer(sys.stdout)
 
-    with logging_redirect_tqdm(), tqdm(disable=len(filenames) == 1, total=len(filenames), unit="file") as progress_output:
+    with logging_redirect_tqdm(), tqdm(
+        disable=len(filenames) == 1, total=len(filenames), unit="file"
+    ) as progress_output:
         work_queue = asyncio.Queue()
         clangd_client: ClangdClient = None
 

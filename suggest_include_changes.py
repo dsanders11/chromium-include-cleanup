@@ -120,6 +120,11 @@ async def main():
         help="The include analysis output to use (- for stdin).",
     )
     parser.add_argument(
+        "filenames",
+        nargs="*",
+        help="File(s) to suggest includes for - if not specified, all files are checked."
+    )
+    parser.add_argument(
         "--clangd-path",
         type=pathlib.Path,
         help="Path to the clangd executable to use.",
@@ -169,13 +174,16 @@ async def main():
         print("error: Must have a .clangd config with IncludeCleaner enabled")
         return 3
 
-    filenames = filter_filenames(
-        include_analysis["files"],
-        filename_filter,
-        filter_generated_files=args.filter_generated_files,
-        filter_mojom_headers=args.filter_mojom_headers,
-        filter_third_party=args.filter_third_party,
-    )
+    if not args.filenames:
+        filenames = filter_filenames(
+            include_analysis["files"],
+            filename_filter,
+            filter_generated_files=args.filter_generated_files,
+            filter_mojom_headers=args.filter_mojom_headers,
+            filter_third_party=args.filter_third_party,
+        )
+    else:
+        filenames = args.filenames
 
     async def start_clangd_client():
         clangd_client = ClangdClient(

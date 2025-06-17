@@ -199,6 +199,10 @@
       ],
       "edges": [
         [
+          "base/allocator/partition_alloc_features.h",
+          "base/metrics/field_trial_params.h"
+        ],
+        [
           "base/allocator/partition_allocator/address_pool_manager.h",
           "base/allocator/partition_allocator/address_pool_manager_bitmap.h"
         ],

@@ -24,7 +24,7 @@ jobs:
         run: pip install -r requirements.txt
       - name: Download Unused Includes Output
         run: |
-          curl https://gist.githubusercontent.com/dsanders11/ccf3505dcbb35492cbadade1ceb663b6/raw/a1e454c1f26cadcc959f98a446590b053bc426e2/unused-includes.csv > unused-includes.csv
+          curl https://gist.githubusercontent.com/dsanders11/ccf3505dcbb35492cbadade1ceb663b6/raw/unused-includes.csv > unused-includes.csv
       - name: Download Include Analysis Output
         run: |
           curl https://commondatastorage.googleapis.com/chromium-browser-clang/include-analysis.js > include-analysis.js

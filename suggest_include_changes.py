@@ -197,7 +197,7 @@ async def main():
 
     csv_writer = csv.writer(sys.stdout)
 
-    with logging_redirect_tqdm(), tqdm(total=len(filenames), unit="file") as progress_output:
+    with logging_redirect_tqdm(), tqdm(disable=len(filenames) == 1, total=len(filenames), unit="file") as progress_output:
         work_queue = asyncio.Queue()
         clangd_client: ClangdClient = None
 

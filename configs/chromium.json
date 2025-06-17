@@ -415,6 +415,10 @@
           "v8/include/v8-cppgc.h"
         ],
         [
+          "third_party/blink/renderer/platform/graphics/graphics_types_3d.h",
+          "third_party/khronos/GLES2/gl2ext.h"
+        ],
+        [
           "third_party/blink/renderer/platform/wtf/allocator/allocator.h",
           "base/allocator/partition_allocator/partition_alloc.h"
         ],

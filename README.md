@@ -33,11 +33,6 @@ To use these scripts, you'll need:
 $ pip install -r ~/chromium-include-cleanup/requirements.txt
 ```
 
-### Patching `clangd`
-
-To get suggestions for includes to add, and other tweaks, `clangd` needs to be
-patched with the patches in `clangd_patches` and built from source.
-
 ## `clangd` Configuration
 
 You need to enable `MissingIncludes` and `UnusedIncludes` diagnostics in a

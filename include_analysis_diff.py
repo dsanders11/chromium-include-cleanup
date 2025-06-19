@@ -67,6 +67,7 @@ def include_analysis_diff(
 ):
     analysis_date = parse_include_analysis_date(include_analysis["date"])
 
+    flagged_nodes = set()
     flagged_edges = set()
 
     analysis_list = extract_include_analysis_list()
@@ -148,7 +149,8 @@ def include_analysis_diff(
                 increase_percentage = difference / float(previous_size)
                 flag_node = increase_percentage >= increase_percentage_threshold / 100.0
 
-            if flag_node:
+            if flag_node and filename not in flagged_nodes:
+                flagged_nodes.add(filename)
                 yield (
                     previous_analysis["url"],
                     previous_analysis["revision"],

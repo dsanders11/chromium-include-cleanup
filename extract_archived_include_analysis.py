@@ -10,6 +10,15 @@ import urllib.request
 DATA_REGEX = re.compile(r".*<script>\n?(data = .*?)<\/script>", re.DOTALL)
 
 
+def extract_include_analysis(contents: str) -> str:
+    data_match = DATA_REGEX.match(contents)
+
+    if data_match:
+        return data_match.group(1).strip()
+
+    return ""
+
+
 def main():
     parser = argparse.ArgumentParser(description="Extract archived include analysis JSON")
     parser.add_argument("include_analysis_url", help="The include analysis output URL to extract.")
@@ -21,11 +30,11 @@ def main():
 
     contents = urllib.request.urlopen(args.include_analysis_url).read()
 
-    data_match = DATA_REGEX.match(contents.decode("utf-8"))
-
     try:
-        if data_match:
-            print(data_match.group(1).strip())
+        include_analysis = extract_include_analysis(contents.decode("utf-8"))
+
+        if include_analysis:
+            print(include_analysis)
 
         sys.stdout.flush()
     except BrokenPipeError:

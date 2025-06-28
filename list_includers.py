@@ -7,6 +7,7 @@ import os
 import sys
 
 from common import IncludeChange
+from filter_include_changes import filter_changes
 from include_analysis import ParseError, parse_raw_include_analysis_output
 from utils import load_config
 
@@ -28,13 +29,16 @@ def main():
     )
     parser.add_argument(
         "--metric",
-        choices=["input_size", "prevalence"],
+        choices=["expanded_size", "input_size", "prevalence"],
         default="prevalence",
         help="Metric to use for edge weights.",
     )
-    # parser.add_argument("--no-filter-generated-files", action="store_true", help="Don't filter out generated files.")
-    # parser.add_argument("--no-filter-mojom-headers", action="store_true", help="Don't filter out mojom headers.")
-    # parser.add_argument("--no-filter-libc++-internal-headers", action="store_true", help="Don't filter out libc++ internal headers.")
+    parser.add_argument(
+        "--filter-third-party", action="store_true", help="Filter out third_party/ (excluding blink) and v8."
+    )
+    parser.add_argument("--no-filter-generated-files", action="store_true", help="Don't filter out generated files.")
+    parser.add_argument("--no-filter-mojom-headers", action="store_true", help="Don't filter out mojom headers.")
+    parser.add_argument("--no-filter-ignores", action="store_true", help="Don't filter out ignores.")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
 
@@ -51,9 +55,13 @@ def main():
         logging.basicConfig(level=logging.DEBUG)
 
     config = None
+    ignores = None
 
     if args.config:
         config = load_config(args.config)
+
+    if config and not args.no_filter_ignores:
+        ignores = config.ignores
 
     if args.filename not in include_analysis["files"]:
         print(f"error: {args.filename} is not a known file")
@@ -63,7 +71,16 @@ def main():
 
     if args.include_changes:
         try:
-            for change_type_value, _, filename, header, *_ in csv.reader(args.include_changes):
+            include_changes = filter_changes(
+                csv.reader(args.include_changes),
+                ignores=ignores,
+                filter_generated_files=not args.no_filter_generated_files,
+                filter_mojom_headers=not args.no_filter_mojom_headers,
+                filter_third_party=args.filter_third_party,
+                header_mappings=config.headerMappings if config else None,
+            )
+
+            for change_type_value, _, filename, header, *_ in include_changes:
                 change_type = IncludeChange.from_value(change_type_value)
 
                 if change_type is None:
@@ -110,6 +127,8 @@ def main():
                 weight = (100.0 * include_analysis["prevalence"][includer]) / root_count
             elif args.metric == "input_size":
                 weight = include_analysis["esizes"][includer][included]
+            elif args.metric == "expanded_size":
+                weight = include_analysis["tsizes"][included]
 
             csv_writer.writerow((includer, included, weight))
 

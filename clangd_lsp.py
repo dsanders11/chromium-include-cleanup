@@ -132,7 +132,7 @@ def parse_includes_from_diagnostics(
             include_match = INCLUDE_REGEX.match(text)
 
             if include_match:
-                remove_includes.append((include_match.group(2), diagnostic.range.start.line))
+                remove_includes.append((include_match.group(1).strip('"'), diagnostic.range.start.line))
             else:
                 logging.error(f"Couldn't match #include regex to diagnostic line: {text}")
         elif diagnostic.code == "missing-includes":

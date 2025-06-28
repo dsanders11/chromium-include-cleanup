@@ -99,6 +99,9 @@ def main():
     edges = set()
 
     def expand_includer(includer, included):
+        if includer.startswith("third_party/libc++/src/include/"):
+            return
+
         if (includer, included) in edges:
             return
 
@@ -110,9 +113,6 @@ def main():
 
     try:
         for includer in include_analysis["included_by"][args.filename]:
-            if includer.startswith("third_party/libc++/src/include/"):
-                continue
-
             if args.transitive:
                 expand_includer(includer, args.filename)
             else:

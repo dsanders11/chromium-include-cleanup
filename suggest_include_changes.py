@@ -50,6 +50,7 @@ async def suggest_include_changes(
     clangd_client: ClangdClient,
     work_queue: asyncio.Queue,
     progress_callback: Callable[[str], None] = None,
+    timeout=None,
 ) -> AsyncIterator[Tuple[IncludeChange, int, str, str, Optional[int]]]:
     """
     Suggest includes to add or remove according to clangd and yield them
@@ -64,7 +65,8 @@ async def suggest_include_changes(
             filename = work_queue.get_nowait()
 
             try:
-                add, remove = await clangd_client.get_include_suggestions(filename)
+                async with asyncio.timeout(timeout):
+                    add, remove = await clangd_client.get_include_suggestions(filename)
 
                 for changes, op in ((add, IncludeChange.ADD), (remove, IncludeChange.REMOVE)):
                     for include, line in changes:
@@ -81,6 +83,8 @@ async def suggest_include_changes(
                 raise
             except FileNotFoundError:
                 logging.error(f"Skipping file due to file not found: {filename}")
+            except TimeoutError:
+                logging.error(f"Skipping file due to timeout: {filename}")
             except Exception:
                 logging.exception(f"Skipping file due to unexpected error: {filename}")
             finally:
@@ -137,6 +141,9 @@ async def main():
     parser.add_argument("--filename-filter", help="Regex to filter which files are analyzed.")
     parser.add_argument(
         "--restart-clangd-after", type=int, default=350, help="Restart clangd every N files processed."
+    )
+    parser.add_argument(
+        "--timeout", type=int, default=30, help="How long to wait for suggestions on any given file."
     )
     parser.add_argument(
         "--filter-third-party", action="store_true", help="Filter out third_party/ (excluding blink) and v8."
@@ -218,6 +225,7 @@ async def main():
                     clangd_client,
                     work_queue,
                     progress_callback=lambda _: progress_output.update(),
+                    timeout=args.timeout,
                 ):
                     csv_writer.writerow((change_type.value, *include_change))
             except ClangdCrashed:

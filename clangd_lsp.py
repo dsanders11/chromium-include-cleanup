@@ -310,6 +310,10 @@ class ClangdClient:
                         break
                     else:
                         yield queue_task.result()
+            except asyncio.CancelledError:
+                if queue_task:
+                    queue_task.cancel()
+                raise
             finally:
                 cancellation_token_task.cancel()
 

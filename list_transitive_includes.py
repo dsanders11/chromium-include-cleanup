@@ -78,7 +78,10 @@ def list_transitive_includes(
         elif metric == "expanded_size":
             weight = include_analysis["tsizes"][included]
 
-        yield (includer, included, weight)
+        if header_mappings and included in header_mappings:
+            yield (includer, header_mappings[included], weight)
+        else:
+            yield (includer, included, weight)
 
 
 def main():

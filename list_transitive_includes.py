@@ -17,9 +17,10 @@ from utils import load_config
 def list_transitive_includes(
     include_analysis: IncludeAnalysisOutput,
     filename: str,
-    metric: str,
+    metric: str = None,
     changes_file: typing.TextIO = None,
     ignores: IgnoresConfiguration = None,
+    ignore_edge: Tuple[str, str] = None,
     filter_generated_files=True,
     filter_mojom_headers=True,
     filter_third_party=False,
@@ -57,6 +58,16 @@ def list_transitive_includes(
         if (includer, included) in edges:
             return
 
+        if ignore_edge:
+            edge = (includer, included)
+
+            # Map the included filename if necesary
+            if header_mappings and included in header_mappings:
+                edge = (includer, header_mappings[included])
+
+            if edge == ignore_edge:
+                return
+
         edges.add((includer, included))
 
         if included in include_analysis["includes"]:
@@ -71,7 +82,9 @@ def list_transitive_includes(
         if include_changes and (includer, included) not in unused_edges:
             continue
 
-        if metric == "prevalence":
+        if metric is None:
+            weight = 0
+        elif metric == "prevalence":
             weight = (100.0 * include_analysis["prevalence"][includer]) / root_count
         elif metric == "input_size":
             weight = include_analysis["esizes"][includer][included]

@@ -17,7 +17,7 @@ from utils import load_config
 def list_includers(
     include_analysis: IncludeAnalysisOutput,
     filename: str,
-    metric: str,
+    metric: str = None,
     transitive=False,
     changes_file: typing.TextIO = None,
     ignores: IgnoresConfiguration = None,
@@ -75,7 +75,9 @@ def list_includers(
         if include_changes and (includer, included) not in unused_edges:
             continue
 
-        if metric == "prevalence":
+        if metric is None:
+            weight = 0
+        elif metric == "prevalence":
             weight = (100.0 * include_analysis["prevalence"][includer]) / root_count
         elif metric == "input_size":
             weight = include_analysis["esizes"][includer][included]

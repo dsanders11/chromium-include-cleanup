@@ -4,6 +4,8 @@ Scripts to help guide cleanup of #include lines in a codebase, using `clangd`
 
 ## Scripts
 
+* `add_to_remove_include.py` - Determine which missing include edges need to be
+  added to remove a specific include
 * `apply_include_changes.py` - Apply include changes to files in the source
   tree
 * `extract_archived_include_analysis.py` - Extract archived include analysis JSON
@@ -122,6 +124,8 @@ Known situations in Chromium where `clangd` will produce false positives:
     exist which make it unnecessary
   * `clangd` will still suggest an include even if a forward declaration makes it
     unnecessary
+  * In some circumstances the presence of an incorrect forward declaration
+    will stop `clangd` from suggesting a missing include
 
 [clangd-releases]: https://github.com/clangd/clangd/releases
 [include-analysis]: https://groups.google.com/a/chromium.org/g/chromium-dev/c/0ZME4DuE06k

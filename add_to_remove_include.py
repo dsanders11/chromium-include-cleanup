@@ -29,6 +29,9 @@ def add_to_remove_include(
     downstream_files: Set[str] = set()
     upstream_headers: Set[str] = set()
 
+    # Include the file being modified since it may need some of the upstream headers
+    downstream_files.add(filename)
+
     for includer, *_ in list_includers(
         include_analysis,
         filename,

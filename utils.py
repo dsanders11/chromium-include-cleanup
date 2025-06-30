@@ -94,6 +94,20 @@ def get_include_analysis_edge_expanded_sizes(include_analysis: IncludeAnalysisOu
     return edge_expanded_sizes
 
 
+def get_include_analysis_edge_file_sizes(include_analysis: IncludeAnalysisOutput):
+    files = include_analysis["files"]
+    edge_file_sizes: DefaultDict[str, Dict[str, int]] = defaultdict(dict)
+
+    for filename in files:
+        for include in include_analysis["includes"][filename]:
+            try:
+                edge_file_sizes[filename][include] = include_analysis["sizes"][include]
+            except KeyError:
+                pass
+
+    return edge_file_sizes
+
+
 def get_include_analysis_edge_prevalence(include_analysis: IncludeAnalysisOutput):
     files = include_analysis["files"]
     root_count = len(include_analysis["roots"])

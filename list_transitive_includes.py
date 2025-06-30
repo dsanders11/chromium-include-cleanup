@@ -14,6 +14,7 @@ from typing import Dict, Iterator, List, Tuple
 from utils import (
     get_include_analysis_edges_centrality,
     get_include_analysis_edge_expanded_sizes,
+    get_include_analysis_edge_file_sizes,
     get_include_analysis_edge_includer_size,
     get_include_analysis_edge_prevalence,
     get_include_analysis_edge_sizes,
@@ -79,6 +80,8 @@ def list_transitive_includes(
         edge_weights = get_include_analysis_edge_sizes(include_analysis)
     elif metric == "expanded_size":
         edge_weights = get_include_analysis_edge_expanded_sizes(include_analysis)
+    elif metric == "file_size":
+        edge_weights = get_include_analysis_edge_file_sizes(include_analysis)
     elif metric == "centrality":
         edge_weights = get_include_analysis_edges_centrality(include_analysis)
     elif metric == "prevalence":
@@ -112,7 +115,7 @@ def main():
     )
     parser.add_argument(
         "--metric",
-        choices=["centrality", "expanded_size", "includer_size", "input_size", "prevalence"],
+        choices=["centrality", "expanded_size", "file_size", "includer_size", "input_size", "prevalence"],
         default="input_size",
         help="Metric to use for edge weights.",
     )

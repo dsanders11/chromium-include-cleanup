@@ -23,7 +23,6 @@ def add_to_remove_include(
     include: str,
     minimal=False,
     ignores: IgnoresConfiguration = None,
-    filter_third_party=False,
     header_mappings: Dict[str, str] = None,
 ) -> Iterator[Tuple[str, str]]:
     downstream_files: Set[str] = set()
@@ -36,9 +35,6 @@ def add_to_remove_include(
         include_analysis,
         filename,
         transitive=True,
-        ignores=ignores,
-        filter_third_party=filter_third_party,
-        header_mappings=header_mappings,
     ):
         downstream_files.add(includer)
 
@@ -50,9 +46,6 @@ def add_to_remove_include(
         for _, included, *_ in list_transitive_includes(
             include_analysis,
             include,
-            ignores=ignores,
-            filter_third_party=filter_third_party,
-            header_mappings=header_mappings,
         ):
             upstream_headers.add(included)
 
@@ -60,7 +53,6 @@ def add_to_remove_include(
         csv.reader(changes_file),
         ignores=ignores,
         change_type_filter=IncludeChange.ADD,
-        filter_third_party=filter_third_party,
         header_mappings=header_mappings,
     )
 
@@ -77,10 +69,7 @@ def add_to_remove_include(
                         list_transitive_includes(
                             include_analysis,
                             includer,
-                            ignores=ignores,
                             ignore_edge=(filename, include),
-                            filter_third_party=filter_third_party,
-                            header_mappings=header_mappings,
                         )
                     )
 
@@ -112,9 +101,6 @@ def main():
     parser.add_argument("--config", help="Name of config file to use.")
     parser.add_argument(
         "--minimal", action="store_true", help="Only output missing includes that wouldn't be satisfied transitively."
-    )
-    parser.add_argument(
-        "--filter-third-party", action="store_true", help="Filter out third_party/ (excluding blink) and v8."
     )
     parser.add_argument("--no-filter-ignores", action="store_true", help="Don't filter out ignores.")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
@@ -159,7 +145,6 @@ def main():
             args.include,
             minimal=args.minimal,
             ignores=ignores,
-            filter_third_party=args.filter_third_party,
             header_mappings=config.headerMappings if config else None,
         ):
             csv_writer.writerow(row)

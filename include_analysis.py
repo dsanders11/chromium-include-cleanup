@@ -2,6 +2,8 @@ import json
 import re
 from typing import Dict, List, Optional, TypedDict
 
+GENERATED_FILE_PREFIX_REGEX = re.compile(r"(^out/[\w-]+/gen/).*$")
+
 
 class RawIncludeAnalysisOutput(TypedDict):
     revision: str
@@ -29,6 +31,7 @@ class IncludeAnalysisOutput(TypedDict):
     asizes: Dict[str, int]
     esizes: Dict[str, Dict[str, int]]
     prevalence: Dict[str, int]
+    gen_prefix: str
 
 
 class ParseError(Exception):
@@ -83,5 +86,20 @@ def parse_raw_include_analysis_output(output: str) -> Optional[IncludeAnalysisOu
 
     # "prevalence" is a dict of filename to the total number of occurrences
     parsed_output["prevalence"] = {files[nr]: prevalence for nr, prevalence in enumerate(raw_output["prevalence"])}
+
+    # Determine the generated file prefix from the files list (e.g., "out/linux-Debug/gen/")
+    gen_prefix = None
+
+    for filename in files:
+        match = GENERATED_FILE_PREFIX_REGEX.match(filename)
+
+        if match:
+            gen_prefix = match.group(1)
+            break
+
+    if gen_prefix is None:
+        raise RuntimeError("Could not determine generated file prefix from include analysis output")
+
+    parsed_output["gen_prefix"] = gen_prefix
 
     return parsed_output

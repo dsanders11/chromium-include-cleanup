@@ -1,3 +1,4 @@
+import logging
 import multiprocessing
 import os
 import pathlib
@@ -233,3 +234,53 @@ def get_include_analysis_edge_includer_size(
                 edge_sizes[filename][include] = include_analysis["sizes"][filename]
 
     return edge_sizes
+
+
+# Cache for normalized include paths to avoid repeated normalization
+_normalized_include_paths: Dict[str, str] = {}
+
+
+def normalize_include_path(
+    include_analysis: IncludeAnalysisOutput, include: str, include_directories: List[str] = None
+) -> str:
+    """Normalize an include path to long form (e.g. full file path)."""
+
+    if include not in _normalized_include_paths:
+        normalized = None
+
+        # Normalization may not be necessary
+        if include in include_analysis["files"]:
+            normalized = include
+        else:
+            if include.startswith("<") and include.endswith(">"):
+                normalized = f"third_party/libc++/src/include/{include.strip('<>')}"
+            else:
+                # First check if it might be a generated file
+                generated_file_path = str(pathlib.Path(include_analysis["gen_prefix"]).joinpath(include))
+
+                if generated_file_path in include_analysis["files"]:
+                    normalized = generated_file_path
+                else:
+                    if include_directories is None:
+                        include_directories = []
+
+                    # If not, try to find it in the include directories
+                    for include_directory in include_directories:
+                        full_path = str(pathlib.Path(include_directory).joinpath(include))
+
+                        if full_path in include_analysis["files"]:
+                            normalized = full_path
+                            break
+
+            if normalized is None:
+                logging.warning(f"Could not normalize include path: {include}.")
+                normalized = include
+            elif normalized not in include_analysis["files"]:
+                logging.warning(
+                    f"Normalized include path not found in include analysis files: {normalized}. Falling back to original include path."
+                )
+                normalized = include
+
+        _normalized_include_paths[include] = normalized
+
+    return _normalized_include_paths[include]

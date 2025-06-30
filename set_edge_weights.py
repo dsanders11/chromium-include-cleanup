@@ -6,28 +6,30 @@ import logging
 import os
 import sys
 import typing
-from typing import Dict, Iterator, Optional, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple
 
 from common import IgnoresConfiguration, IncludeChange
 from filter_include_changes import filter_changes
-from include_analysis import ParseError, parse_raw_include_analysis_output
+from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
 from utils import (
-    GENERATED_FILE_PREFIX_REGEX,
     get_include_analysis_edges_centrality,
     get_include_analysis_edge_expanded_sizes,
     get_include_analysis_edge_includer_size,
     get_include_analysis_edge_prevalence,
     get_include_analysis_edge_sizes,
     load_config,
+    normalize_include_path,
 )
 
 
 def set_edge_weights(
+    include_analysis: IncludeAnalysisOutput,
     changes_file: typing.TextIO,
     edge_weights: Dict[str, Dict[str, int]],
     filter_third_party: bool = False,
     ignores: IgnoresConfiguration = None,
     header_mappings: Dict[str, str] = None,
+    include_directories: List[str] = None,
 ) -> Iterator[Tuple[IncludeChange, int, str, str, Optional[int]]]:
     """Set edge weights in the include changes output"""
 
@@ -44,21 +46,16 @@ def set_edge_weights(
         change_type = IncludeChange.from_value(change_type_value)
         change = (line, filename, include)
 
-        if change_type is IncludeChange.REMOVE:
-            # Strip off the path prefix for generated file includes so matching will work
-            filename = GENERATED_FILE_PREFIX_REGEX.match(filename).group(1)
-            include = GENERATED_FILE_PREFIX_REGEX.match(include).group(1)
+        # Normalize from clangd's short form includes to the long form in the include
+        # analysis output (e.g. <vector> -> third_party/libc++/src/include/vector)
+        include = normalize_include_path(include_analysis, filename, include, include_directories=include_directories)
 
+        if change_type is IncludeChange.REMOVE:
             # For now, only removes have edge weights
             if filename not in edge_weights:
-                logging.warning(f"Skipping filename not found in weights, file may be removed: {filename}")
+                logging.warning(f"Skipping filename not found in weights, file may have been removed: {filename}")
             elif include not in edge_weights[filename]:
-                # Include may be a relative filename
-                absolute_path = os.path.join(os.path.dirname(filename), include)
-                if absolute_path not in edge_weights[filename]:
-                    logging.warning(f"Skipping edge not found in weights: {filename},{include}")
-                else:
-                    include = absolute_path
+                logging.warning(f"Skipping edge not found in weights: {filename},{include}")
             else:
                 change = change + (edge_weights[filename][include],)
         elif change_type is IncludeChange.ADD:
@@ -127,27 +124,25 @@ def main():
     csv_writer = csv.writer(sys.stdout)
 
     if args.metric == "input_size":
-        edge_weights = get_include_analysis_edge_sizes(include_analysis, config.includeDirs if config else None)
+        edge_weights = get_include_analysis_edge_sizes(include_analysis)
     elif args.metric == "expanded_size":
-        edge_weights = get_include_analysis_edge_expanded_sizes(
-            include_analysis, config.includeDirs if config else None
-        )
+        edge_weights = get_include_analysis_edge_expanded_sizes(include_analysis)
     elif args.metric == "centrality":
-        edge_weights = get_include_analysis_edges_centrality(include_analysis, config.includeDirs if config else None)
+        edge_weights = get_include_analysis_edges_centrality(include_analysis)
     elif args.metric == "prevalence":
-        edge_weights = get_include_analysis_edge_prevalence(include_analysis, config.includeDirs if config else None)
+        edge_weights = get_include_analysis_edge_prevalence(include_analysis)
     elif args.metric == "includer_size":
-        edge_weights = get_include_analysis_edge_includer_size(
-            include_analysis, config.includeDirs if config else None
-        )
+        edge_weights = get_include_analysis_edge_includer_size(include_analysis)
 
     try:
         for row in set_edge_weights(
+            include_analysis,
             args.changes_file,
             edge_weights,
             filter_third_party=args.filter_third_party,
             ignores=ignores,
             header_mappings=config.headerMappings if config else None,
+            include_directories=config.includeDirs if config else None,
         ):
             csv_writer.writerow(row)
 

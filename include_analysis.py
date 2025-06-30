@@ -2,7 +2,8 @@ import json
 import re
 from typing import Dict, List, Optional, TypedDict
 
-GENERATED_FILE_PREFIX_REGEX = re.compile(r"(^out/[\w-]+/gen/).*$")
+GENERATED_FILE_PREFIX_REGEX = re.compile(r"^(out/[\w-]+/gen/).*$")
+SYSROOT_REGEX = re.compile(r"^(build/linux/[\w-]+/)usr/include/([\w-]+)/sys/.*$")
 
 
 class RawIncludeAnalysisOutput(TypedDict):
@@ -32,6 +33,8 @@ class IncludeAnalysisOutput(TypedDict):
     esizes: Dict[str, Dict[str, int]]
     prevalence: Dict[str, int]
     gen_prefix: str
+    sysroot: str
+    sysroot_platform: str
 
 
 class ParseError(Exception):
@@ -87,7 +90,7 @@ def parse_raw_include_analysis_output(output: str) -> Optional[IncludeAnalysisOu
     # "prevalence" is a dict of filename to the total number of occurrences
     parsed_output["prevalence"] = {files[nr]: prevalence for nr, prevalence in enumerate(raw_output["prevalence"])}
 
-    # Determine the generated file prefix from the files list (e.g., "out/linux-Debug/gen/")
+    # Determine the generated file prefix from the files list (e.g. "out/linux-Debug/gen/")
     gen_prefix = None
 
     for filename in files:
@@ -101,5 +104,23 @@ def parse_raw_include_analysis_output(output: str) -> Optional[IncludeAnalysisOu
         raise RuntimeError("Could not determine generated file prefix from include analysis output")
 
     parsed_output["gen_prefix"] = gen_prefix
+
+    # Determine the sysroot from the files list (e.g. "build/linux/debian_bullseye_amd64-sysroot/")
+    sysroot = None
+    sysroot_platform = None
+
+    for filename in files:
+        match = SYSROOT_REGEX.match(filename)
+
+        if match:
+            sysroot = match.group(1)
+            sysroot_platform = match.group(2)
+            break
+
+    if sysroot is None or sysroot_platform is None:
+        raise RuntimeError("Could not determine sysroot from include analysis output")
+
+    parsed_output["sysroot"] = sysroot
+    parsed_output["sysroot_platform"] = sysroot_platform
 
     return parsed_output

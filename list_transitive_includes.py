@@ -10,8 +10,16 @@ import typing
 from common import IgnoresConfiguration, IncludeChange
 from filter_include_changes import filter_changes
 from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
-from typing import Dict, Iterator, Tuple
-from utils import load_config
+from typing import Dict, Iterator, List, Tuple
+from utils import (
+    get_include_analysis_edges_centrality,
+    get_include_analysis_edge_expanded_sizes,
+    get_include_analysis_edge_includer_size,
+    get_include_analysis_edge_prevalence,
+    get_include_analysis_edge_sizes,
+    load_config,
+    normalize_include_path,
+)
 
 
 def list_transitive_includes(
@@ -25,6 +33,7 @@ def list_transitive_includes(
     filter_mojom_headers=True,
     filter_third_party=False,
     header_mappings: Dict[str, str] = None,
+    include_directories: List[str] = None,
 ) -> Iterator[Tuple[str, str, int]]:
     root_count = len(include_analysis["roots"])
     edges = set()
@@ -49,6 +58,9 @@ def list_transitive_includes(
                 continue
 
             if change_type is IncludeChange.REMOVE:
+                included = normalize_include_path(
+                    include_analysis, includer, included, include_directories=include_directories
+                )
                 unused_edges.add((includer, included))
 
     def expand_includes(includer, included):
@@ -77,19 +89,23 @@ def list_transitive_includes(
     for include in include_analysis["includes"][filename]:
         expand_includes(filename, include)
 
+    if metric == "input_size":
+        edge_weights = get_include_analysis_edge_sizes(include_analysis)
+    elif metric == "expanded_size":
+        edge_weights = get_include_analysis_edge_expanded_sizes(include_analysis)
+    elif metric == "centrality":
+        edge_weights = get_include_analysis_edges_centrality(include_analysis)
+    elif metric == "prevalence":
+        edge_weights = get_include_analysis_edge_prevalence(include_analysis)
+    elif metric == "includer_size":
+        edge_weights = get_include_analysis_edge_includer_size(include_analysis)
+
     for includer, included in edges:
         # If include changes are provided, skip edges which are not unused
         if include_changes and (includer, included) not in unused_edges:
             continue
 
-        if metric is None:
-            weight = 0
-        elif metric == "prevalence":
-            weight = (100.0 * include_analysis["prevalence"][includer]) / root_count
-        elif metric == "input_size":
-            weight = include_analysis["esizes"][includer][included]
-        elif metric == "expanded_size":
-            weight = include_analysis["tsizes"][included]
+        weight = edge_weights[includer][included] if metric else None
 
         yield (includer, included, weight)
 
@@ -110,7 +126,7 @@ def main():
     )
     parser.add_argument(
         "--metric",
-        choices=["expanded_size", "input_size", "prevalence"],
+        choices=["centrality", "expanded_size", "includer_size", "input_size", "prevalence"],
         default="input_size",
         help="Metric to use for edge weights.",
     )
@@ -161,6 +177,7 @@ def main():
             filter_mojom_headers=not args.no_filter_mojom_headers,
             filter_third_party=args.filter_third_party,
             header_mappings=config.headerMappings if config else None,
+            include_directories=config.includeDirs if config else None,
         ):
             csv_writer.writerow(row)
 

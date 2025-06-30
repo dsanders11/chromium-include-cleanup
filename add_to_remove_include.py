@@ -12,8 +12,8 @@ from filter_include_changes import filter_changes
 from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
 from list_includers import list_includers
 from list_transitive_includes import list_transitive_includes
-from typing import Dict, Iterator, Set, Tuple
-from utils import load_config
+from typing import Dict, Iterator, List, Set, Tuple
+from utils import load_config, normalize_include_path
 
 
 def add_to_remove_include(
@@ -24,6 +24,7 @@ def add_to_remove_include(
     minimal=False,
     ignores: IgnoresConfiguration = None,
     header_mappings: Dict[str, str] = None,
+    include_directories: List[str] = None,
 ) -> Iterator[Tuple[str, str]]:
     downstream_files: Set[str] = set()
     upstream_headers: Set[str] = set()
@@ -59,6 +60,10 @@ def add_to_remove_include(
     minimal_transitive_includes_cache = {}
 
     for _, _, includer, included, *_ in add_changes:
+        included = normalize_include_path(
+            include_analysis, includer, included, include_directories=include_directories
+        )
+
         if includer in downstream_files and included in upstream_headers:
             if minimal:
                 # Check if it's already being pulled in transitively
@@ -146,6 +151,7 @@ def main():
             minimal=args.minimal,
             ignores=ignores,
             header_mappings=config.headerMappings if config else None,
+            include_directories=config.includeDirs if config else None,
         ):
             csv_writer.writerow(row)
 

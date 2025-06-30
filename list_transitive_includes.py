@@ -32,7 +32,6 @@ def list_transitive_includes(
     filter_generated_files=True,
     filter_mojom_headers=True,
     filter_third_party=False,
-    header_mappings: Dict[str, str] = None,
     include_directories: List[str] = None,
 ) -> Iterator[Tuple[str, str, int]]:
     root_count = len(include_analysis["roots"])
@@ -44,24 +43,17 @@ def list_transitive_includes(
         include_changes = filter_changes(
             csv.reader(changes_file),
             ignores=ignores,
+            change_type_filter=IncludeChange.REMOVE,
             filter_generated_files=filter_generated_files,
             filter_mojom_headers=filter_mojom_headers,
             filter_third_party=filter_third_party,
-            header_mappings=header_mappings,
         )
 
         for change_type_value, _, includer, included, *_ in include_changes:
-            change_type = IncludeChange.from_value(change_type_value)
-
-            if change_type is None:
-                logging.warning(f"Skipping unknown change type: {change_type_value}")
-                continue
-
-            if change_type is IncludeChange.REMOVE:
-                included = normalize_include_path(
-                    include_analysis, includer, included, include_directories=include_directories
-                )
-                unused_edges.add((includer, included))
+            included = normalize_include_path(
+                include_analysis, includer, included, include_directories=include_directories
+            )
+            unused_edges.add((includer, included))
 
     def expand_includes(includer, included):
         if includer.startswith("third_party/libc++/src/include/"):
@@ -71,13 +63,7 @@ def list_transitive_includes(
             return
 
         if ignore_edge:
-            edge = (includer, included)
-
-            # Map the included filename if necesary
-            if header_mappings and included in header_mappings:
-                edge = (includer, header_mappings[included])
-
-            if edge == ignore_edge:
+            if (includer, included) == ignore_edge:
                 return
 
         edges.add((includer, included))
@@ -176,7 +162,6 @@ def main():
             filter_generated_files=not args.no_filter_generated_files,
             filter_mojom_headers=not args.no_filter_mojom_headers,
             filter_third_party=args.filter_third_party,
-            header_mappings=config.headerMappings if config else None,
             include_directories=config.includeDirs if config else None,
         ):
             csv_writer.writerow(row)

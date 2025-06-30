@@ -469,10 +469,6 @@
     "absl/types/optional.h": "third_party/abseil-cpp/absl/types/optional.h",
     "base/bind_internal.h": "base/bind.h",
     "third_party/abseil-cpp/absl/types/internal/optional.h": "third_party/abseil-cpp/absl/types/optional.h",
-    "base/threading/scoped_blocking_call_internal.h": "base/threading/scoped_blocking_call.h",
-    "third_party/libc++/src/include/map": "<map>",
-    "third_party/libc++/src/include/optional": "<optional>",
-    "third_party/libc++/src/include/set": "<set>",
-    "third_party/libc++/src/include/vector": "<vector>"
+    "base/threading/scoped_blocking_call_internal.h": "base/threading/scoped_blocking_call.h"
   }
 }

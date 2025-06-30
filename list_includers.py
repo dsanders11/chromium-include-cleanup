@@ -84,10 +84,7 @@ def list_includers(
         elif metric == "expanded_size":
             weight = include_analysis["tsizes"][included]
 
-        if header_mappings and included in header_mappings:
-            yield (includer, header_mappings[included], weight)
-        else:
-            yield (includer, included, weight)
+        yield (includer, included, weight)
 
 
 def main():

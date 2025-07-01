@@ -5,11 +5,10 @@ import csv
 import logging
 import os
 import sys
-import typing
 from typing import Dict, Iterator, List, Optional, Tuple
 
 from common import IgnoresConfiguration, IncludeChange
-from filter_include_changes import filter_changes
+from filter_include_changes import Change, filter_changes
 from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
 from utils import (
     get_include_analysis_edges_centrality,
@@ -25,7 +24,7 @@ from utils import (
 
 def set_edge_weights(
     include_analysis: IncludeAnalysisOutput,
-    changes_file: typing.TextIO,
+    changes: List[Change],
     edge_weights: Dict[str, Dict[str, int]],
     filter_third_party: bool = False,
     ignores: IgnoresConfiguration = None,
@@ -37,7 +36,7 @@ def set_edge_weights(
     change_type_value: str
 
     filtered_changes = filter_changes(
-        csv.reader(changes_file),
+        changes,
         filter_third_party=filter_third_party,
         ignores=ignores,
         header_mappings=header_mappings,
@@ -140,7 +139,7 @@ def main():
     try:
         for row in set_edge_weights(
             include_analysis,
-            args.changes_file,
+            csv.reader(args.changes_file),
             edge_weights,
             filter_third_party=args.filter_third_party,
             ignores=ignores,

@@ -5,11 +5,10 @@ import csv
 import logging
 import os
 import sys
-import typing
 from collections import defaultdict
 
 from common import IgnoresConfiguration, IncludeChange
-from filter_include_changes import filter_changes
+from filter_include_changes import Change, filter_changes
 from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
 from typing import Dict, Iterator, List, Tuple
 from utils import (
@@ -29,7 +28,7 @@ def list_transitive_includes(
     include_analysis: IncludeAnalysisOutput,
     filename: str,
     metric: str = None,
-    changes_file: typing.TextIO = None,
+    changes: List[Change] = None,
     ignores: IgnoresConfiguration = None,
     ignore_edge: Tuple[str, str] = None,
     filter_generated_files=True,
@@ -46,9 +45,9 @@ def list_transitive_includes(
     unused_edges = set()
     include_changes = None
 
-    if changes_file:
+    if changes:
         include_changes = filter_changes(
-            csv.reader(changes_file),
+            changes,
             ignores=ignores,
             filter_generated_files=filter_generated_files,
             filter_mojom_headers=filter_mojom_headers,
@@ -205,7 +204,7 @@ def main():
             include_analysis,
             args.filename,
             args.metric,
-            changes_file=args.include_changes,
+            changes=csv.reader(args.include_changes) if args.include_changes else None,
             ignores=ignores,
             filter_generated_files=not args.no_filter_generated_files,
             filter_mojom_headers=not args.no_filter_mojom_headers,

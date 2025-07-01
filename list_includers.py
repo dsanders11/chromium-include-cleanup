@@ -5,10 +5,9 @@ import csv
 import logging
 import os
 import sys
-import typing
 
 from common import IgnoresConfiguration, IncludeChange
-from filter_include_changes import filter_changes
+from filter_include_changes import Change, filter_changes
 from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
 from typing import Dict, Iterator, Tuple
 from utils import (
@@ -28,7 +27,7 @@ def list_includers(
     filename: str,
     metric: str = None,
     transitive=False,
-    changes_file: typing.TextIO = None,
+    changes: List[Change] = None,
     ignores: IgnoresConfiguration = None,
     filter_generated_files=True,
     filter_mojom_headers=True,
@@ -39,9 +38,9 @@ def list_includers(
     unused_edges = set()
     include_changes = None
 
-    if changes_file:
+    if changes:
         include_changes = filter_changes(
-            csv.reader(changes_file),
+            changes,
             ignores=ignores,
             change_type_filter=IncludeChange.REMOVE,
             filter_generated_files=filter_generated_files,
@@ -160,7 +159,7 @@ def main():
             args.filename,
             args.metric,
             transitive=args.transitive,
-            changes_file=args.include_changes,
+            changes=csv.reader(args.include_changes) if args.include_changes else None,
             ignores=ignores,
             filter_generated_files=not args.no_filter_generated_files,
             filter_mojom_headers=not args.no_filter_mojom_headers,

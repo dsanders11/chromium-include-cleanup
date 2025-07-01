@@ -5,10 +5,9 @@ import csv
 import logging
 import os
 import sys
-import typing
 
 from common import IgnoresConfiguration, IncludeChange
-from filter_include_changes import filter_changes
+from filter_include_changes import Change, filter_changes
 from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
 from list_includers import list_includers
 from list_transitive_includes import list_transitive_includes
@@ -18,7 +17,7 @@ from utils import load_config, normalize_include_path
 
 def add_to_remove_include(
     include_analysis: IncludeAnalysisOutput,
-    changes_file: typing.TextIO,
+    changes: List[Change],
     filename: str,
     include: str,
     minimal=False,
@@ -51,7 +50,7 @@ def add_to_remove_include(
             upstream_headers.add(included)
 
     add_changes = filter_changes(
-        csv.reader(changes_file),
+        changes,
         ignores=ignores,
         change_type_filter=IncludeChange.ADD,
         header_mappings=header_mappings,
@@ -145,7 +144,7 @@ def main():
     try:
         for row in add_to_remove_include(
             include_analysis,
-            args.changes_file,
+            csv.reader(args.changes_file),
             args.filename,
             args.include,
             minimal=args.minimal,

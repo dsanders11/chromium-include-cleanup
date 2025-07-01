@@ -194,7 +194,9 @@
         "base/strings/string_piece_forward.h",
         "base/trace_event/trace_event_impl.h",
         "ui/base/metadata/metadata_macros_internal.h",
-        "ui/gfx/image/image_skia_rep_default.h"
+        "ui/gfx/image/image_skia_rep_default.h",
+        "partition_alloc/partition_alloc_base/numerics/safe_conversions.h",
+        "partition_alloc/partition_alloc_base/numerics/safe_math_shared_impl.h"
       ]
     },
     "remove": {
@@ -527,6 +529,8 @@
   },
   "headerMappings": {
     "absl/types/optional.h": "third_party/abseil-cpp/absl/types/optional.h",
+    "partition_alloc/partition_alloc_base/numerics/checked_math_impl.h": "partition_alloc/partition_alloc_base/numerics/checked_math.h",
+    "partition_alloc/partition_alloc_base/numerics/safe_conversions_impl.h": "partition_alloc/partition_alloc_base/numerics/safe_conversions.h",
     "base/bind_internal.h": "base/bind.h",
     "third_party/abseil-cpp/absl/types/internal/optional.h": "third_party/abseil-cpp/absl/types/optional.h",
     "base/threading/scoped_blocking_call_internal.h": "base/threading/scoped_blocking_call.h"

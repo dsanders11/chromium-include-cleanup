@@ -182,6 +182,7 @@
   "ignores": {
     "add": {
       "headers": [
+        "<functional>",
         "base/atomicops_internals_portable.h",
         "base/callback_forward.h",
         "base/callback_internal.h",

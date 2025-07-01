@@ -125,13 +125,27 @@ def filter_changes(
                     if header in header_mappings and header_mappings[header] in pending_changes[filename]:
                         if pending_changes[filename][header][0] is IncludeChange.REMOVE:
                             continue
+
+                    try:
+                        header = header_mappings[header]
+                    except KeyError:
+                        # Confirm the header is in the inverse mapping,
+                        # which is the only way we should end up here
+                        assert header in inverse_header_mappings
+
+                    # Check ignores again now that we've mapped the header
+                    ignore_edge = (filename, header) in ignores.add.edges
+                    ignore_include = header in ignores.add.headers
+
+                    if ignore_edge or ignore_include:
+                        continue
                 elif change_type is IncludeChange.REMOVE and header in inverse_header_mappings:
                     # Look for a corresponding add which would cancel out
                     if header in inverse_header_mappings and inverse_header_mappings[header] in pending_changes[filename]:
                         if pending_changes[filename][header][0] is IncludeChange.ADD:
                             continue
 
-                yield (change_type.value, line, filename, header_mappings[header], *_)
+                yield (change_type.value, line, filename, header, *_)
 
 
 def main():

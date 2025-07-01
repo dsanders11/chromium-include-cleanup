@@ -139,7 +139,7 @@ def main():
     try:
         for row in set_edge_weights(
             include_analysis,
-            csv.reader(args.changes_file),
+            list(csv.reader(args.changes_file)),
             edge_weights,
             filter_third_party=args.filter_third_party,
             ignores=ignores,

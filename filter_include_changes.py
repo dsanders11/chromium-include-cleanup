@@ -193,7 +193,7 @@ def main():
 
     try:
         for change in filter_changes(
-            csv.reader(args.changes_file),
+            list(csv.reader(args.changes_file)),
             ignores=ignores,
             filename_filter=filename_filter,
             header_filter=header_filter,

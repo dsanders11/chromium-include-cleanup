@@ -123,7 +123,7 @@ def main():
             for row in recalculate_expanded_sizes(
                 include_analysis,
                 filenames,
-                csv.reader(args.changes_file),
+                list(csv.reader(args.changes_file)),
                 progress_callback=lambda _: progress_output.update(),
                 ignores=ignores,
                 filter_generated_files=not args.no_filter_generated_files,

@@ -144,7 +144,7 @@ def main():
     try:
         for row in add_to_remove_include(
             include_analysis,
-            csv.reader(args.changes_file),
+            list(csv.reader(args.changes_file)),
             args.filename,
             args.include,
             minimal=args.minimal,

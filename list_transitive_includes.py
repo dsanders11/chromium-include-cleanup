@@ -204,7 +204,7 @@ def main():
             include_analysis,
             args.filename,
             args.metric,
-            changes=csv.reader(args.include_changes) if args.include_changes else None,
+            changes=list(csv.reader(args.include_changes)) if args.include_changes else None,
             ignores=ignores,
             filter_generated_files=not args.no_filter_generated_files,
             filter_mojom_headers=not args.no_filter_mojom_headers,

@@ -120,6 +120,7 @@ def get_include_file_size(include_analysis: IncludeAnalysisOutput, include: str)
         return include_analysis["sizes"][include]
     except KeyError:
         logging.warning(f"Couldn't get include file size for {include}")
+        include_analysis["sizes"][include] = 0
         return 0
 
 

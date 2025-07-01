@@ -26,14 +26,16 @@ def recalculate_expanded_sizes(
     header_mappings: Dict[str, str] = None,
     include_directories: List[str] = None,
 ) -> Iterator[Tuple[str, int]]:
-    include_changes = FilteredIncludeChangeList(filter_changes(
-        changes,
-        ignores=ignores,
-        filter_generated_files=filter_generated_files,
-        filter_mojom_headers=filter_mojom_headers,
-        filter_third_party=filter_third_party,
-        header_mappings=header_mappings,
-    ))
+    include_changes = FilteredIncludeChangeList(
+        filter_changes(
+            changes,
+            ignores=ignores,
+            filter_generated_files=filter_generated_files,
+            filter_mojom_headers=filter_mojom_headers,
+            filter_third_party=filter_third_party,
+            header_mappings=header_mappings,
+        )
+    )
 
     for filename in filenames:
         # Recalculate all of the transitive includes for this file

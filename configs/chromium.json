@@ -221,7 +221,6 @@
         "base/numerics/safe_math.h",
         "base/strings/string_piece.h",
         "base/trace_event/base_tracing.h",
-        "base/trace_event/base_tracing_forward.h",
         "base/trace_event/typed_macros.h",
         "base/tracing_buildflags.h",
         "build/branding_buildflags.h",
@@ -531,6 +530,7 @@
     "absl/types/optional.h": "third_party/abseil-cpp/absl/types/optional.h",
     "partition_alloc/partition_alloc_base/numerics/checked_math_impl.h": "partition_alloc/partition_alloc_base/numerics/checked_math.h",
     "partition_alloc/partition_alloc_base/numerics/safe_conversions_impl.h": "partition_alloc/partition_alloc_base/numerics/safe_conversions.h",
+    "perfetto/tracing/traced_value_forward.h": "base/trace_event/base_tracing_forward.h",
     "base/bind_internal.h": "base/bind.h",
     "third_party/abseil-cpp/absl/types/internal/optional.h": "third_party/abseil-cpp/absl/types/optional.h",
     "base/threading/scoped_blocking_call_internal.h": "base/threading/scoped_blocking_call.h"

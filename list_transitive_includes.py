@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import typing
+from collections import defaultdict
 
 from common import IgnoresConfiguration, IncludeChange
 from filter_include_changes import filter_changes
@@ -18,6 +19,7 @@ from utils import (
     get_include_analysis_edge_includer_size,
     get_include_analysis_edge_prevalence,
     get_include_analysis_edge_sizes,
+    get_include_file_size,
     load_config,
     normalize_include_path,
 )
@@ -33,10 +35,14 @@ def list_transitive_includes(
     filter_generated_files=True,
     filter_mojom_headers=True,
     filter_third_party=False,
+    header_mappings: Dict[str, str] = None,
     include_directories: List[str] = None,
+    apply_changes=False,
+    full=False,
 ) -> Iterator[Tuple[str, str, int]]:
     root_count = len(include_analysis["roots"])
     edges = set()
+    add_suggestions = defaultdict(list)
     unused_edges = set()
     include_changes = None
 
@@ -44,34 +50,54 @@ def list_transitive_includes(
         include_changes = filter_changes(
             csv.reader(changes_file),
             ignores=ignores,
-            change_type_filter=IncludeChange.REMOVE,
             filter_generated_files=filter_generated_files,
             filter_mojom_headers=filter_mojom_headers,
             filter_third_party=filter_third_party,
+            header_mappings=header_mappings,
         )
 
         for change_type_value, _, includer, included, *_ in include_changes:
+            change_type = IncludeChange.from_value(change_type_value)
+
+            if change_type is None:
+                logging.warning(f"Skipping unknown change type: {change_type_value}")
+                continue
+
             included = normalize_include_path(
                 include_analysis, includer, included, include_directories=include_directories
             )
-            unused_edges.add((includer, included))
+
+            if change_type is IncludeChange.REMOVE:
+                unused_edges.add((includer, included))
+            elif change_type is IncludeChange.ADD:
+                add_suggestions[includer].append(included)
 
     def expand_includes(includer, included):
-        if includer.startswith("third_party/libc++/src/include/"):
+        # Normally we want to treat libc++ headers as opaque, unless the full option is true
+        if not full and includer.startswith("third_party/libc++/src/include/"):
             return
 
-        if (includer, included) in edges:
+        edge = (includer, included)
+
+        if edge in edges:
             return
 
-        if ignore_edge:
-            if (includer, included) == ignore_edge:
-                return
+        # If we're applying changes and this edge is unused, then stop here
+        if apply_changes and edge in unused_edges:
+            return
+
+        if ignore_edge and edge == ignore_edge:
+            return
 
         edges.add((includer, included))
 
         if included in include_analysis["includes"]:
             for transitive_include in include_analysis["includes"][included]:
                 expand_includes(included, transitive_include)
+
+            # Inject any add suggestions here
+            for added_include in add_suggestions[included]:
+                expand_includes(included, added_include)
 
     for include in include_analysis["includes"][filename]:
         expand_includes(filename, include)
@@ -90,11 +116,18 @@ def list_transitive_includes(
         edge_weights = get_include_analysis_edge_includer_size(include_analysis)
 
     for includer, included in edges:
-        # If include changes are provided, skip edges which are not unused
-        if include_changes and (includer, included) not in unused_edges:
+        # If include changes are provided, only output unused edges, unless
+        # the apply_changes option is true, in which case continue as normal
+        if not apply_changes and include_changes and (includer, included) not in unused_edges:
             continue
 
-        weight = edge_weights[includer][included] if metric else None
+        try:
+            weight = edge_weights[includer][included] if metric else None
+        except KeyError:
+            if metric == "file_size":
+                weight = get_include_file_size(include_analysis, included)
+            else:
+                weight = None
 
         yield (includer, included, weight)
 
@@ -125,8 +158,20 @@ def main():
     parser.add_argument("--no-filter-generated-files", action="store_true", help="Don't filter out generated files.")
     parser.add_argument("--no-filter-mojom-headers", action="store_true", help="Don't filter out mojom headers.")
     parser.add_argument("--no-filter-ignores", action="store_true", help="Don't filter out ignores.")
+    parser.add_argument(
+        "--apply-changes",
+        action="store_true",
+        help="Apply the supplied include changes (remove unused includes, add missing ones).",
+    )
+    parser.add_argument(
+        "--full", action="store_true", help="List all transitive includes, even those inside system headers."
+    )
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
+
+    if args.apply_changes and not args.include_changes:
+        print("error: --apply-changes option requires --include-changes")
+        return 1
 
     try:
         include_analysis = parse_raw_include_analysis_output(args.include_analysis_output.read())
@@ -165,7 +210,10 @@ def main():
             filter_generated_files=not args.no_filter_generated_files,
             filter_mojom_headers=not args.no_filter_mojom_headers,
             filter_third_party=args.filter_third_party,
+            header_mappings=config.headerMappings if config else None,
             include_directories=config.includeDirs if config else None,
+            apply_changes=args.apply_changes,
+            full=args.full,
         ):
             csv_writer.writerow(row)
 

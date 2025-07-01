@@ -108,6 +108,10 @@ def get_include_analysis_edge_file_sizes(include_analysis: IncludeAnalysisOutput
     return edge_file_sizes
 
 
+def get_include_file_size(include_analysis: IncludeAnalysisOutput, include: str):
+    return include_analysis["sizes"][include]
+
+
 def get_include_analysis_edge_prevalence(include_analysis: IncludeAnalysisOutput):
     files = include_analysis["files"]
     root_count = len(include_analysis["roots"])

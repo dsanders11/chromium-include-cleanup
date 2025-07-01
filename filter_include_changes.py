@@ -123,7 +123,7 @@ def filter_changes(
                 if change_type is IncludeChange.ADD:
                     # Look for a corresponding remove which would cancel out
                     if header in header_mappings and header_mappings[header] in pending_changes[filename]:
-                        if pending_changes[filename][header][0] is IncludeChange.REMOVE:
+                        if pending_changes[filename][header_mappings[header]][0] is IncludeChange.REMOVE:
                             continue
 
                     try:
@@ -141,8 +141,11 @@ def filter_changes(
                         continue
                 elif change_type is IncludeChange.REMOVE and header in inverse_header_mappings:
                     # Look for a corresponding add which would cancel out
-                    if header in inverse_header_mappings and inverse_header_mappings[header] in pending_changes[filename]:
-                        if pending_changes[filename][header][0] is IncludeChange.ADD:
+                    if (
+                        header in inverse_header_mappings
+                        and inverse_header_mappings[header] in pending_changes[filename]
+                    ):
+                        if pending_changes[filename][inverse_header_mappings[header]][0] is IncludeChange.ADD:
                             continue
 
                 yield (change_type.value, line, filename, header, *_)

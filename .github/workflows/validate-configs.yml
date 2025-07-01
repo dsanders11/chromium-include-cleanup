@@ -1,0 +1,28 @@
+name: Validate Configs
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate-config:
+    name: Validate Configs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Validate JSON schema
+        uses: dsanders11/json-schema-validate-action@b5da274adf09991e884b85426bcf941e0477771b # v1.3.0
+        with:
+          schema: json-schema
+          files: config.schema.json
+      - name: Validate configs
+        uses: dsanders11/json-schema-validate-action@b5da274adf09991e884b85426bcf941e0477771b # v1.3.0
+        with:
+          schema: config.schema.json
+          files: configs/*.json
+  

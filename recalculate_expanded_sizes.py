@@ -6,8 +6,8 @@ import logging
 import os
 import sys
 
-from common import IgnoresConfiguration, IncludeChange
-from filter_include_changes import Change
+from common import FilteredIncludeChangeList, IgnoresConfiguration, IncludeChange
+from filter_include_changes import Change, filter_changes
 from list_transitive_includes import list_transitive_includes
 from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
 from typing import Callable, Dict, Iterator, List, Tuple
@@ -26,13 +26,22 @@ def recalculate_expanded_sizes(
     header_mappings: Dict[str, str] = None,
     include_directories: List[str] = None,
 ) -> Iterator[Tuple[str, int]]:
+    include_changes = FilteredIncludeChangeList(filter_changes(
+        changes,
+        ignores=ignores,
+        filter_generated_files=filter_generated_files,
+        filter_mojom_headers=filter_mojom_headers,
+        filter_third_party=filter_third_party,
+        header_mappings=header_mappings,
+    ))
+
     for filename in filenames:
         # Recalculate all of the transitive includes for this file
         includes = list_transitive_includes(
             include_analysis,
             filename,
             metric="file_size",
-            changes=changes,
+            changes=include_changes,
             ignores=ignores,
             filter_generated_files=filter_generated_files,
             filter_mojom_headers=filter_mojom_headers,

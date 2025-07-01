@@ -1,4 +1,5 @@
 import enum
+import functools
 from typing import Dict, List, Tuple, Union
 
 from pydantic import BaseModel
@@ -9,10 +10,15 @@ class IncludeChange(enum.Enum):
     REMOVE = "remove"
 
     @classmethod
+    @functools.cache
     def from_value(cls, value):
         for enum_value in cls:
             if enum_value.value == value:
                 return enum_value
+
+
+class FilteredIncludeChangeList(list):
+    """A filtered include changes list"""
 
 
 class IgnoresSubConfiguration(BaseModel):

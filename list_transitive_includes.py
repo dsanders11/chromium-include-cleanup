@@ -7,7 +7,7 @@ import os
 import sys
 from collections import defaultdict
 
-from common import IgnoresConfiguration, IncludeChange
+from common import FilteredIncludeChangeList, IgnoresConfiguration, IncludeChange
 from filter_include_changes import Change, filter_changes
 from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
 from typing import Dict, Iterator, List, Tuple
@@ -41,19 +41,23 @@ def list_transitive_includes(
 ) -> Iterator[Tuple[str, str, int]]:
     root_count = len(include_analysis["roots"])
     edges = set()
-    add_suggestions = defaultdict(list)
+    add_suggestions = defaultdict(set)
     unused_edges = set()
     include_changes = None
 
     if changes:
-        include_changes = filter_changes(
-            changes,
-            ignores=ignores,
-            filter_generated_files=filter_generated_files,
-            filter_mojom_headers=filter_mojom_headers,
-            filter_third_party=filter_third_party,
-            header_mappings=header_mappings,
-        )
+        # To avoid redundant filtering, allow providing an already filtered list
+        if isinstance(changes, FilteredIncludeChangeList):
+            include_changes = changes
+        else:
+            include_changes = filter_changes(
+                changes,
+                ignores=ignores,
+                filter_generated_files=filter_generated_files,
+                filter_mojom_headers=filter_mojom_headers,
+                filter_third_party=filter_third_party,
+                header_mappings=header_mappings,
+            )
 
         for change_type_value, _, includer, included, *_ in include_changes:
             change_type = IncludeChange.from_value(change_type_value)
@@ -69,7 +73,7 @@ def list_transitive_includes(
             if change_type is IncludeChange.REMOVE:
                 unused_edges.add((includer, included))
             elif change_type is IncludeChange.ADD:
-                add_suggestions[includer].append(included)
+                add_suggestions[includer].add(included)
 
     def expand_includes(includer, included):
         # Normally we want to treat libc++ headers as opaque, unless the full option is true

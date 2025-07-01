@@ -1,3 +1,4 @@
+import functools
 import logging
 import multiprocessing
 import os
@@ -95,6 +96,9 @@ def get_include_analysis_edge_expanded_sizes(include_analysis: IncludeAnalysisOu
 
 
 def get_include_analysis_edge_file_sizes(include_analysis: IncludeAnalysisOutput):
+    if "_edge_file_sizes" in include_analysis:
+        return include_analysis["_edge_file_sizes"]
+
     files = include_analysis["files"]
     edge_file_sizes: DefaultDict[str, Dict[str, int]] = defaultdict(dict)
 
@@ -104,6 +108,8 @@ def get_include_analysis_edge_file_sizes(include_analysis: IncludeAnalysisOutput
                 edge_file_sizes[filename][include] = include_analysis["sizes"][include]
             except KeyError:
                 pass
+
+    include_analysis["_edge_file_sizes"] = edge_file_sizes
 
     return edge_file_sizes
 
@@ -172,6 +178,11 @@ def get_include_analysis_edge_includer_size(include_analysis: IncludeAnalysisOut
     return edge_sizes
 
 
+@functools.cache
+def _init_path(value: str):
+    return pathlib.Path(value)
+
+
 # Cache for normalized include paths to avoid repeated normalization
 _normalized_include_paths: Dict[str, str] = {}
 
@@ -200,7 +211,7 @@ def normalize_include_path(
                 include = include.strip("<>")
 
                 # Angle bracket headers might be in either libc++ or the sysroot
-                sysroot = pathlib.Path(include_analysis["sysroot"])
+                sysroot = _init_path(include_analysis["sysroot"])
                 normalized = f"third_party/libc++/src/include/{include}"
 
                 if normalized not in files:
@@ -215,7 +226,7 @@ def normalize_include_path(
                         if include_directory.startswith("{sysroot}"):
                             resolved_include_directory = str(sysroot.joinpath(include_directory[10:]))
 
-                            full_path = str(pathlib.Path(resolved_include_directory).joinpath(include))
+                            full_path = str(_init_path(resolved_include_directory).joinpath(include))
 
                             if full_path in files:
                                 normalized = full_path
@@ -228,7 +239,7 @@ def normalize_include_path(
                                     )
                                 )
 
-                                full_path = str(pathlib.Path(resolved_include_directory).joinpath(include))
+                                full_path = str(_init_path(resolved_include_directory).joinpath(include))
 
                                 if full_path in files:
                                     normalized = full_path
@@ -238,13 +249,13 @@ def normalize_include_path(
                                 break
             else:
                 # First check if it might be a relative file
-                relative_file_path = str(pathlib.Path(includer).parent.joinpath(include))
+                relative_file_path = str(_init_path(includer).parent.joinpath(include))
 
                 if relative_file_path in files:
                     normalized = relative_file_path
                 else:
                     # Then check if it might be a generated file
-                    gen_prefix = pathlib.Path(include_analysis["gen_prefix"])
+                    gen_prefix = _init_path(include_analysis["gen_prefix"])
                     generated_file_path = str(gen_prefix.joinpath(include))
 
                     if generated_file_path in files:
@@ -261,7 +272,7 @@ def normalize_include_path(
                             ):
                                 continue  # These are handled as angle brackets
 
-                            full_path = str(pathlib.Path(include_directory).joinpath(include))
+                            full_path = str(_init_path(include_directory).joinpath(include))
 
                             if full_path in files:
                                 normalized = full_path

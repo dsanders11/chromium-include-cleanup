@@ -58,6 +58,11 @@ def recalculate_expanded_sizes(
         expanded_size = sum(map(lambda entry: entry[1], set(map(lambda entry: entry[1:3], includes))))
         expanded_size += include_analysis["sizes"][filename]
 
+        if expanded_size > include_analysis["tsizes"][filename]:
+            logging.warning(
+                f"{filename} unexpectedly increased in size from {include_analysis["tsizes"][filename]} to {expanded_size}"
+            )
+
         yield (filename, expanded_size)
 
         if progress_callback:

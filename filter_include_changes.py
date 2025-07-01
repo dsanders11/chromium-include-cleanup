@@ -39,6 +39,9 @@ def filter_changes(
     # mapping, since we know that means clangd is confused on which header to include
     pending_changes: DefaultDict[str, Dict[str, Tuple[IncludeChange, int, Optional[str]]]] = defaultdict(dict)
 
+    if header_mappings:
+        inverse_header_mappings = {v: k for k, v in header_mappings.items()}
+
     for change_type_value, line, filename, header, *_ in changes:
         # Weight value may or may not be present
         if weight_threshold:
@@ -101,7 +104,7 @@ def filter_changes(
                     continue
 
         # If the header is in a provided header mapping, wait until the end to yield it
-        if header_mappings and header in header_mappings:
+        if header_mappings and (header in header_mappings or header in inverse_header_mappings):
             assert header not in pending_changes[filename]
 
             # TODO - Includes inside of dependencies shouldn't be mapped since they can
@@ -113,20 +116,18 @@ def filter_changes(
         yield (change_type_value, line, filename, header, *_)
 
     if header_mappings:
-        inverse_header_mappings = {v: k for k, v in header_mappings.items()}
-
         for filename in pending_changes:
             for header in pending_changes[filename]:
                 change_type, line, *_ = pending_changes[filename][header]
 
                 if change_type is IncludeChange.ADD:
                     # Look for a corresponding remove which would cancel out
-                    if header_mappings[header] in pending_changes[filename]:
+                    if header in header_mappings and header_mappings[header] in pending_changes[filename]:
                         if pending_changes[filename][header][0] is IncludeChange.REMOVE:
                             continue
                 elif change_type is IncludeChange.REMOVE and header in inverse_header_mappings:
                     # Look for a corresponding add which would cancel out
-                    if inverse_header_mappings[header] in pending_changes[filename]:
+                    if header in inverse_header_mappings and inverse_header_mappings[header] in pending_changes[filename]:
                         if pending_changes[filename][header][0] is IncludeChange.ADD:
                             continue
 

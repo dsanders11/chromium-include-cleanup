@@ -107,6 +107,7 @@ def get_include_analysis_edge_file_sizes(include_analysis: IncludeAnalysisOutput
             try:
                 edge_file_sizes[filename][include] = include_analysis["sizes"][include]
             except KeyError:
+                logging.warning(f"Couldn't get include file size for {include}")
                 pass
 
     include_analysis["_edge_file_sizes"] = edge_file_sizes
@@ -115,7 +116,11 @@ def get_include_analysis_edge_file_sizes(include_analysis: IncludeAnalysisOutput
 
 
 def get_include_file_size(include_analysis: IncludeAnalysisOutput, include: str):
-    return include_analysis["sizes"][include]
+    try:
+        return include_analysis["sizes"][include]
+    except KeyError:
+        logging.warning(f"Couldn't get include file size for {include}")
+        return 0
 
 
 def get_include_analysis_edge_prevalence(include_analysis: IncludeAnalysisOutput):

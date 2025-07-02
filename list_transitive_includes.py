@@ -37,6 +37,7 @@ def list_transitive_includes(
     header_mappings: Dict[str, str] = None,
     include_directories: List[str] = None,
     apply_changes=False,
+    remove_only=False,
     full=False,
 ) -> Iterator[Tuple[str, str, int]]:
     root_count = len(include_analysis["roots"])
@@ -99,8 +100,9 @@ def list_transitive_includes(
                 expand_includes(included, transitive_include)
 
             # Inject any add suggestions here
-            for added_include in add_suggestions[included]:
-                expand_includes(included, added_include)
+            if not remove_only:
+                for added_include in add_suggestions[included]:
+                    expand_includes(included, added_include)
 
     for include in include_analysis["includes"][filename]:
         expand_includes(filename, include)

@@ -25,6 +25,7 @@ def recalculate_expanded_sizes(
     filter_third_party=False,
     header_mappings: Dict[str, str] = None,
     include_directories: List[str] = None,
+    remove_only=False,
 ) -> Iterator[Tuple[str, int]]:
     include_changes = FilteredIncludeChangeList(
         filter_changes(
@@ -52,6 +53,7 @@ def recalculate_expanded_sizes(
             include_directories=include_directories,
             apply_changes=True,
             full=True,
+            remove_only=remove_only,
         )
 
         # The expanded size for the file is all of its include sizes, and its own size
@@ -96,6 +98,7 @@ def main():
     parser.add_argument("--no-filter-generated-files", action="store_true", help="Don't filter out generated files.")
     parser.add_argument("--no-filter-mojom-headers", action="store_true", help="Don't filter out mojom headers.")
     parser.add_argument("--no-filter-ignores", action="store_true", help="Don't filter out ignores.")
+    parser.add_argument("--remove-only", action="store_true", help="Only apply remove include suggestions.")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
 
@@ -147,6 +150,7 @@ def main():
                 filter_third_party=args.filter_third_party,
                 header_mappings=config.headerMappings if config else None,
                 include_directories=config.includeDirs if config else None,
+                remove_only=args.remove_only
             ):
                 csv_writer.writerow(row)
 

@@ -62,8 +62,9 @@ def recalculate_expanded_sizes(
 
         if expanded_size > include_analysis["tsizes"][filename]:
             logging.warning(
-                f"{filename} unexpectedly increased in size from {include_analysis["tsizes"][filename]} to {expanded_size}"
+                f"{filename} unexpectedly increased in size from {include_analysis["tsizes"][filename]} to {expanded_size} - ignoring"
             )
+            expanded_size = include_analysis["tsizes"][filename]
 
         yield (filename, expanded_size)
 

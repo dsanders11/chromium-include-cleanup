@@ -141,14 +141,14 @@ def create_graph_from_include_analysis(include_analysis: IncludeAnalysisOutput):
     DG = nx.DiGraph()
 
     files = include_analysis["files"]
+    file_idx_lookup = {filename: idx for idx, filename in enumerate(files)}
 
     # Add nodes and edges to the graph
-    # XXX - Unfortunately this is pretty slow, takes several minutes to add the edges
     for idx, filename in enumerate(files):
         DG.add_node(idx, filename=filename)
 
         for include in include_analysis["includes"][filename]:
-            DG.add_edge(idx, files.index(include))
+            DG.add_edge(idx, file_idx_lookup[include])
 
     return DG
 
@@ -159,6 +159,7 @@ def get_include_analysis_edges_centrality(include_analysis: IncludeAnalysisOutpu
     nodes_out = nx.out_degree_centrality(DG)
 
     files = include_analysis["files"]
+    file_idx_lookup = {filename: idx for idx, filename in enumerate(files)}
     edges_centrality: DefaultDict[str, Dict[str, float]] = defaultdict(dict)
 
     # Centrality is a metric for a node, but we want to create a metric for an edge.
@@ -169,7 +170,7 @@ def get_include_analysis_edges_centrality(include_analysis: IncludeAnalysisOutpu
     for idx, filename in enumerate(files):
         for include in include_analysis["includes"][filename]:
             # Scale the value up so it's more human-friendly instead of having lots of leading zeroes
-            edges_centrality[filename][include] = 100000 * nodes_out[files.index(absolute_include)] * nodes_in[idx]
+            edges_centrality[filename][include] = 100000 * nodes_out[file_idx_lookup[include]] * nodes_in[idx]
 
     return edges_centrality
 

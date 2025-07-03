@@ -35,6 +35,7 @@ jobs:
           python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric expanded_size > priority-unused-includes.expanded_size.csv
           python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric prevalence > priority-unused-includes.prevalence.csv
           python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric includer_size > priority-unused-includes.includer_size.csv
+          python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric centrality > priority-unused-includes.centrality.csv
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: weighted-unused-includes
@@ -44,6 +45,7 @@ jobs:
             priority-unused-includes.expanded_size.csv
             priority-unused-includes.prevalence.csv
             priority-unused-includes.includer_size.csv
+            priority-unused-includes.centrality.csv
       - run: npm install @actions/cache
       - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
@@ -55,6 +57,7 @@ jobs:
             const expandedSizeData = fs.readFileSync('./priority-unused-includes.expanded_size.csv', 'utf8').trim().split('\n');
             const prevalenceData = fs.readFileSync('./priority-unused-includes.prevalence.csv', 'utf8').trim().split('\n');
             const includerSizeData = fs.readFileSync('./priority-unused-includes.includer_size.csv', 'utf8').trim().split('\n');
+            const centralityData = fs.readFileSync('./priority-unused-includes.centrality.csv', 'utf8').trim().split('\n');
             let totalAddedSize = 0;
 
             const unusedIncludes = await Promise.all(data.split('\n').map(async (line, idx) => {
@@ -81,6 +84,7 @@ jobs:
                 parseFloat(prevalenceData[idx].trim().split(',')[4]),
                 parseInt(expandedSizeData[idx].trim().split(',')[4]),
                 parseInt(includerSizeData[idx].trim().split(',')[4]),
+                parseInt(centralityData[idx].trim().split(',')[4]),
                 cacheHit,
               ];
             }));
@@ -93,6 +97,7 @@ jobs:
                   { data: 'Prevalence', header: true },
                   { data: 'Expanded Size', header: true },
                   { data: 'Includer Size', header: true },
+                  { data: 'Centrality', header: true },
                 ],
                 // Sort by added size, then convert it back to string or it won't render
                 ...includes
@@ -103,6 +108,7 @@ jobs:
                     `${prevalence.toFixed(2)}%`,
                     expandedSize.toLocaleString(),
                     includerSize.toLocaleString(),
+                    centrality.toFixed(3),
                   ]),
               ]);
             }

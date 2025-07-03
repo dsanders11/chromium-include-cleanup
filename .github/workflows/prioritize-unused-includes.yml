@@ -84,7 +84,7 @@ jobs:
                 parseFloat(prevalenceData[idx].trim().split(',')[4]),
                 parseInt(expandedSizeData[idx].trim().split(',')[4]),
                 parseInt(includerSizeData[idx].trim().split(',')[4]),
-                parseInt(centralityData[idx].trim().split(',')[4]),
+                parseFloat(centralityData[idx].trim().split(',')[4]),
                 cacheHit,
               ];
             }));
@@ -108,7 +108,7 @@ jobs:
                     `${prevalence.toFixed(2)}%`,
                     expandedSize.toLocaleString(),
                     includerSize.toLocaleString(),
-                    centrality.toFixed(3),
+                    centrality.toFixed(5),
                   ]),
               ]);
             }

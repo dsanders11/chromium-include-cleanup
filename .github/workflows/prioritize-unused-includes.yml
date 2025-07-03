@@ -118,7 +118,7 @@ jobs:
               core.summary.addRaw(`Found ${unusedIncludes.length} unused includes over 10 MB of added size for a total of ${totalAddedSize.toLocaleString()} bytes of added size`);
               core.summary.addBreak();
 
-              const newlySeen = unusedIncludes.filter(([, , , , , cacheHit]) => !cacheHit)
+              const newlySeen = unusedIncludes.filter(([, , , , , , cacheHit]) => !cacheHit)
               if (newlySeen.length > 0) {
                 core.summary.addHeading('Not Seen Before', '2');
                 addTable(newlySeen);

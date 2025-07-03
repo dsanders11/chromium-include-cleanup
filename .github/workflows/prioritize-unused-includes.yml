@@ -102,7 +102,7 @@ jobs:
                 // Sort by added size, then convert it back to string or it won't render
                 ...includes
                   .sort((a, b) => b[1] - a[1])
-                  .map(([edge, added_size, prevalence, expandedSize, includerSize]) => [
+                  .map(([edge, added_size, prevalence, expandedSize, includerSize, centrality]) => [
                     edge,
                     added_size.toLocaleString(),
                     `${prevalence.toFixed(2)}%`,

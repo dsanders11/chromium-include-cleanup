@@ -54,7 +54,7 @@ jobs:
       - name: Include Analysis Diff
         if: ${{ steps.check-new-include-analysis.outputs.revision }}
         run: |
-          python include_analysis_diff.py include-analysis.js > include-analysis-diff.csv
+          python include_analysis_diff.py include-analysis.js --min-edge-size 40 --increase-percentage-threshold 25 --increase-from-zero-threshold 40 > include-analysis-diff.csv
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: ${{ steps.check-new-include-analysis.outputs.revision }}
         with:

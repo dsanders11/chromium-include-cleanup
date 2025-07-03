@@ -16,8 +16,11 @@ Scripts to help guide cleanup of #include lines in a codebase, using `clangd`
 * `list_transitive_includes.py` - List transitive (and direct) includes of a file
 * `post_process_compilation_db.py` - Post-process the clang compilation
   database for analysis
+* `recalculate_expanded_sizes.py` - Recalculate translation unit expanded sizes if
+  all provided include changes were applied
 * `set_edge_weights.py` - Set edge weights in include changes output
 * `suggest_include_changes.py` - Suggests includes to add and remove
+* `trace_transitive_include.py` - Trace a transitive include from a source file
 
 ## Prerequisites
 

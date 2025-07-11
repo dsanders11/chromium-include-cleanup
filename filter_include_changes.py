@@ -53,8 +53,6 @@ def filter_changes(
         if change_type is None:
             logging.warning(f"Skipping unknown change type: {change_type_value}")
             continue
-        elif change_type_filter and change_type != change_type_filter:
-            continue
 
         # Filter out internal system headers
         if header.startswith("<__"):
@@ -111,6 +109,9 @@ def filter_changes(
             pending_changes[filename][header] = (change_type, line, *_)
             continue
 
+        if change_type_filter and change_type != change_type_filter:
+            continue
+
         yield (change_type_value, line, filename, header, *_)
 
     if header_mappings:
@@ -145,6 +146,9 @@ def filter_changes(
                     ):
                         if pending_changes[filename][inverse_header_mappings[header]][0] is IncludeChange.ADD:
                             continue
+
+                if change_type_filter and change_type != change_type_filter:
+                    continue
 
                 yield (change_type.value, line, filename, header, *_)
 

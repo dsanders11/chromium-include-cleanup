@@ -88,8 +88,6 @@ def filter_changes(
                 ignore_edge = (filename, header) in ignores.remove.edges
                 ignore_include = header in ignores.remove.headers
 
-                # TODO - Ignore unused suggestion if the include is for the associated header
-
                 if ignore_edge or ignore_include:
                     continue
             elif change_type is IncludeChange.ADD:

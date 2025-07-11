@@ -158,6 +158,7 @@ def include_analysis_diff(
                     filename,
                     "",
                     str(difference),
+                    str(current_size),
                 )
 
             for header in include_analysis["esizes"][filename]:
@@ -196,6 +197,7 @@ def include_analysis_diff(
                         filename,
                         header,
                         str(difference),
+                        str(current_size),
                     )
 
 

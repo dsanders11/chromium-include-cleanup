@@ -60,8 +60,8 @@ jobs:
             const rows = fs.readFileSync('./include-analysis-diff.csv', 'utf8').trim().split('\n').map((line) => line.trim().split(','));
 
             // If there's no include listed, the file itself increased in size
-            const files = rows.filter((row) => row[4] === '').map((row) => [row[0], row[1], row[2], row[3], parseInt(row[5])]);
-            const edges = rows.filter((row) => row[4] !== '').map((row) => [row[0], row[1], row[2], `${row[3]} --> ${row[4]}`, parseInt(row[5])]);
+            const files = rows.filter((row) => row[4] === '').map((row) => [row[0], row[1], row[2], row[3], parseInt(row[5]), parseInt(row[6]]));
+            const edges = rows.filter((row) => row[4] !== '').map((row) => [row[0], row[1], row[2], `${row[3]} --> ${row[4]}`, parseInt(row[5]), parseInt(row[6])]);
 
             if (files.length > 0 || edges.length > 0) {
               core.summary.addHeading('🔬 Chromium Include Analysis Diff');
@@ -75,15 +75,17 @@ jobs:
                     { data: 'Previous Analysis', header: true },
                     { data: 'Filename', header: true },
                     { data: 'Added Size Increase', header: true },
+                    { data: 'Total Added Size', header: true },
                   ],
                   // Sort by added size, then convert it back to string or it won't render
                   ...files
                     .sort((a, b) => b[4] - a[4])
-                    .map(([url, revision, date, filename, addedSize]) => [
+                    .map(([url, revision, date, filename, addedSize, totalSize]) => [
                       `<a href="${url}" title="${revision}">${date}</a>`,
                       // `<a href="${url}#view=files&filter=${encodeURIComponent("^" + filename + "$")}">${filename}</a>`,
                       filename,
-                      addedSize.toLocaleString(),
+                      `+${addedSize.toLocaleString()}`,
+                      `+${totalSize.toLocaleString()}`,
                     ]),
                 ]);
               }

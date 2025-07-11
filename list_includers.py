@@ -33,7 +33,6 @@ def list_includers(
     filter_mojom_headers=True,
     filter_third_party=False,
 ) -> Iterator[Tuple[str, str, int]]:
-    root_count = len(include_analysis["roots"])
     edges = set()
     unused_edges = set()
     include_changes = None

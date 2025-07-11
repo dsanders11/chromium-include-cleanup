@@ -40,7 +40,6 @@ def list_transitive_includes(
     remove_only=False,
     full=False,
 ) -> Iterator[Tuple[str, str, int]]:
-    root_count = len(include_analysis["roots"])
     edges = set()
     add_suggestions = defaultdict(set)
     unused_edges = set()

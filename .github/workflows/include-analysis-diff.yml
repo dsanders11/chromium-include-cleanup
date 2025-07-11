@@ -60,7 +60,7 @@ jobs:
             const rows = fs.readFileSync('./include-analysis-diff.csv', 'utf8').trim().split('\n').map((line) => line.trim().split(','));
 
             // If there's no include listed, the file itself increased in size
-            const files = rows.filter((row) => row[4] === '').map((row) => [row[0], row[1], row[2], row[3], parseInt(row[5]), parseInt(row[6]]));
+            const files = rows.filter((row) => row[4] === '').map((row) => [row[0], row[1], row[2], row[3], parseInt(row[5]), parseInt(row[6]]);
             const edges = rows.filter((row) => row[4] !== '').map((row) => [row[0], row[1], row[2], `${row[3]} --> ${row[4]}`, parseInt(row[5]), parseInt(row[6])]);
 
             if (files.length > 0 || edges.length > 0) {

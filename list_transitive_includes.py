@@ -99,7 +99,7 @@ def list_transitive_includes(
                 expand_includes(included, transitive_include)
 
             # Inject any add suggestions here
-            if not remove_only:
+            if changes and not remove_only:
                 for added_include in add_suggestions[included]:
                     expand_includes(included, added_include)
 

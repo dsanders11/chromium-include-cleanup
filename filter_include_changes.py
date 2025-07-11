@@ -16,7 +16,7 @@ Change = Tuple[IncludeChange, int, str, str, Optional[str]]
 
 
 GENERATED_FILE_REGEX = re.compile(r"^out/[\w-]+/gen/.*$")
-MOJOM_HEADER_REGEX = re.compile(r"^.*.mojom[^.]*.h$")
+MOJOM_HEADER_REGEX = re.compile(r"^.*\.mojom[^\.]*\.h$")
 THIRD_PARTY_REGEX = re.compile(r"^(?:third_party\/(?!blink)|v8).*$")
 
 

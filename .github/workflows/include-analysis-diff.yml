@@ -85,7 +85,7 @@ jobs:
                       // `<a href="${url}#view=files&filter=${encodeURIComponent("^" + filename + "$")}">${filename}</a>`,
                       filename,
                       `+${addedSize.toLocaleString()}`,
-                      `+${totalSize.toLocaleString()}`,
+                      totalSize.toLocaleString(),
                     ]),
                 ]);
               }
@@ -97,15 +97,17 @@ jobs:
                     { data: 'Previous Analysis', header: true },
                     { data: 'Include Edge', header: true },
                     { data: 'Added Size Increase', header: true },
+                    { data: 'Total Added Size', header: true },
                   ],
                   // Sort by added size, then convert it back to string or it won't render
                   ...edges
                     .sort((a, b) => b[4] - a[4])
-                    .map(([url, revision, date, edge, addedSize]) => [
+                    .map(([url, revision, date, edge, addedSize, totalSize]) => [
                       `<a href="${url}" title="${revision}">${date}</a>`,
                       // `<a href="${url}#view=edges&includer=${encodeURIComponent("^" + edge.split(" ")[0] + "$")}&included=${encodeURIComponent("^" + edge.split(" ").at(-1) + "$")}"">${edge}</a>`,
                       edge,
-                      addedSize.toLocaleString(),
+                      `+${addedSize.toLocaleString()}`,
+                      totalSize.toLocaleString(),
                     ]),
                 ]);
               }

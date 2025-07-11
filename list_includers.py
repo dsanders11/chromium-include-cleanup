@@ -9,7 +9,7 @@ import sys
 from common import IgnoresConfiguration, IncludeChange
 from filter_include_changes import Change, filter_changes
 from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
-from typing import Dict, Iterator, Tuple
+from typing import Iterator, List, Tuple
 from utils import (
     get_include_analysis_edges_centrality,
     get_include_analysis_edge_expanded_sizes,
@@ -32,6 +32,7 @@ def list_includers(
     filter_generated_files=True,
     filter_mojom_headers=True,
     filter_third_party=False,
+    include_directories: List[str] = None,
 ) -> Iterator[Tuple[str, str, int]]:
     edges = set()
     unused_edges = set()
@@ -47,7 +48,7 @@ def list_includers(
             filter_third_party=filter_third_party,
         )
 
-        for change_type_value, _, includer, included, *_ in include_changes:
+        for _, _, includer, included, *_ in include_changes:
             included = normalize_include_path(
                 include_analysis, includer, included, include_directories=include_directories
             )

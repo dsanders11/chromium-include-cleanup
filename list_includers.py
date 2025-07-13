@@ -29,8 +29,8 @@ def list_includers(
     transitive=False,
     changes: List[Change] = None,
     ignores: IgnoresConfiguration = None,
-    filter_generated_files=True,
-    filter_mojom_headers=True,
+    filter_generated_files=False,
+    filter_mojom_headers=False,
     filter_third_party=False,
     include_directories: List[str] = None,
 ) -> Iterator[Tuple[str, str, int]]:

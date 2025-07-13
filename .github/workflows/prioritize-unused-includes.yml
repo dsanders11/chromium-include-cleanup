@@ -79,7 +79,7 @@ jobs:
               }
 
               return [
-                `${filename} --> ${include}`,
+                `${filename} --> ${include.replace(/</g, '&lt;').replace(/>/g, '&gt;')}`,
                 addedSize,
                 parseFloat(prevalenceData[idx].trim().split(',')[4]),
                 parseInt(expandedSizeData[idx].trim().split(',')[4]),

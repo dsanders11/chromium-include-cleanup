@@ -16,7 +16,7 @@ Change = Tuple[IncludeChange, int, str, str, Optional[str]]
 
 
 GENERATED_FILE_REGEX = re.compile(r"^out/[\w-]+/gen/.*$")
-MOJOM_HEADER_REGEX = re.compile(r"^.*\.mojom[^\.]*\.h$")
+MOJOM_HEADER_REGEX = re.compile(r"^(.*)\.mojom[^\.]*\.h$")
 THIRD_PARTY_REGEX = re.compile(r"^(?:third_party\/(?!blink)|v8).*$")
 
 
@@ -31,6 +31,7 @@ def filter_changes(
     filter_third_party=False,
     header_mappings: Dict[str, str] = None,
     weight_threshold: float = None,
+    cleanup_mojom_headers=False,
 ):
     """Filter changes"""
 
@@ -38,6 +39,13 @@ def filter_changes(
     # it suggests removing one include and adding another, when the pair is found in the
     # mapping, since we know that means clangd is confused on which header to include
     pending_changes: DefaultDict[str, Dict[str, Tuple[IncludeChange, int, Optional[str]]]] = defaultdict(dict)
+
+    # clangd struggles heavily with Mojom headers since there are several variants
+    # (mojom-forward.h, mojom-shared.h, mojom.h, etc) and it can't understand the
+    # conventions and determine which is the canonical header to include. Because
+    # of that, let's filter out any changes where clangd is suggesting to remove
+    # one variant and add a different variant since it is more than likely wrong.
+    pending_mojom_changes: DefaultDict[str, Dict[str, Tuple[IncludeChange, int, Optional[str]]]] = defaultdict(dict)
 
     if header_mappings:
         inverse_header_mappings = {v: k for k, v in header_mappings.items()}
@@ -109,6 +117,13 @@ def filter_changes(
             pending_changes[filename][header] = (change_type, line, *_)
             continue
 
+        # If the header is a Mojom header, wait until the end to yield it
+        if cleanup_mojom_headers and MOJOM_HEADER_REGEX.match(header):
+            assert header not in pending_mojom_changes[filename]
+
+            pending_mojom_changes[filename][header] = (change_type, line, *_)
+            continue
+
         if change_type_filter and change_type != change_type_filter:
             continue
 
@@ -152,6 +167,41 @@ def filter_changes(
 
                 yield (change_type.value, line, filename, header, *_)
 
+    if cleanup_mojom_headers:
+        for filename in pending_mojom_changes:
+            for header in pending_mojom_changes[filename]:
+                change_type, line, *_ = pending_mojom_changes[filename][header]
+
+                header_prefix = MOJOM_HEADER_REGEX.match(header).group(1)
+                canceled_out = False
+
+                for header_suggestion in pending_mojom_changes[filename]:
+                    match = MOJOM_HEADER_REGEX.match(header_suggestion)
+
+                    # If the header suggestion is for a different variant of a Mojom header
+                    # which has a pending change of the opposite type, cancel them out
+                    if match and header_prefix == match.group(1):
+                        if (
+                            change_type is IncludeChange.ADD
+                            and pending_mojom_changes[filename][header_suggestion][0] is IncludeChange.REMOVE
+                        ):
+                            canceled_out = True
+                            break
+                        elif (
+                            change_type is IncludeChange.REMOVE
+                            and pending_mojom_changes[filename][header_suggestion][0] is IncludeChange.ADD
+                        ):
+                            canceled_out = True
+                            break
+
+                if canceled_out:
+                    continue
+
+                if change_type_filter and change_type != change_type_filter:
+                    continue
+
+                yield (change_type.value, line, filename, header, *_)
+
 
 def main():
     parser = argparse.ArgumentParser(description="Filter include changes output")
@@ -172,6 +222,7 @@ def main():
     parser.add_argument("--no-filter-generated-files", action="store_true", help="Don't filter out generated files.")
     parser.add_argument("--no-filter-mojom-headers", action="store_true", help="Don't filter out mojom headers.")
     parser.add_argument("--no-filter-ignores", action="store_true", help="Don't filter out ignores.")
+    parser.add_argument("--no-cleanup-mojom-headers", action="store_true", help="Don't clean up mojom header changes.")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--add-only", action="store_true", default=False, help="Only output includes to add.")
     group.add_argument("--remove-only", action="store_true", default=False, help="Only output includes to remove.")
@@ -188,6 +239,10 @@ def main():
         header_filter = re.compile(args.header_filter) if args.header_filter else None
     except Exception:
         print("error: --header-filter is not a valid regex")
+        return 1
+
+    if args.no_cleanup_mojom_headers and not args.no_filter_mojom_headers:
+        print("error: --no-cleanup-mojom-headers option requires --no-filter-mojom-headers")
         return 1
 
     if args.verbose:
@@ -223,6 +278,7 @@ def main():
             filter_third_party=args.filter_third_party,
             header_mappings=config.headerMappings if config else None,
             weight_threshold=args.weight_threshold,
+            cleanup_mojom_headers=not args.no_cleanup_mojom_headers,
         ):
             csv_writer.writerow(change)
 

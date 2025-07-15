@@ -157,10 +157,17 @@ def parse_includes_from_diagnostics(
 
 # Partially based on sansio-lsp-client/tests/test_actual_langservers.py
 class ClangdClient:
-    def __init__(self, clangd_path: str, root_path: pathlib.Path, compile_commands_dir: pathlib.Path = None):
+    def __init__(
+        self,
+        clangd_path: str,
+        root_path: pathlib.Path,
+        compile_commands_dir: pathlib.Path = None,
+        log_level: str = None,
+    ):
         self.root_path = root_path
         self.clangd_path = clangd_path
         self.compile_commands_dir = compile_commands_dir
+        self.log_level = log_level
         self.lsp_client = AsyncSendLspClient(
             root_uri=root_path.as_uri(),
             trace="verbose",
@@ -229,6 +236,9 @@ class ClangdClient:
 
     async def start(self):
         args = ["--enable-config", "--background-index=false", f"-j={get_worker_count()}"]
+
+        if self.log_level:
+            args.append(f"--log={self.log_level}")
 
         if self.compile_commands_dir:
             args.append(f"--compile-commands-dir={self.compile_commands_dir}")

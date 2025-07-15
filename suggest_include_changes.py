@@ -195,6 +195,7 @@ async def main():
             args.clangd_path,
             root_path,
             args.compile_commands_dir.resolve() if args.compile_commands_dir else None,
+            log_level="verbose" if args.verbose else None,
         )
         await clangd_client.start()
 

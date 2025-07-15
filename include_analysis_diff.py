@@ -12,6 +12,7 @@ from datetime import datetime
 from extract_archived_include_analysis import extract_include_analysis
 from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
 from suggest_include_changes import filter_filenames
+from utils import get_latest_include_analysis
 
 CHROMIUM_INCLUDE_ANALYSIS_BASE_URL = "https://commondatastorage.googleapis.com/chromium-browser-clang"
 HREF_REGEX = re.compile(r"<a href=\"(.*?)\">", re.DOTALL)
@@ -243,10 +244,7 @@ def main():
     if args.include_analysis_output:
         raw_include_analysis = args.include_analysis_output.read()
     else:
-        include_analysis_response = urllib.request.urlopen(
-            "https://commondatastorage.googleapis.com/chromium-browser-clang/include-analysis.js"
-        )
-        raw_include_analysis = include_analysis_response.read().decode("utf8")
+        raw_include_analysis = get_latest_include_analysis()
 
     try:
         include_analysis = parse_raw_include_analysis_output(raw_include_analysis)

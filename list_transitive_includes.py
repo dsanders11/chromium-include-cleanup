@@ -19,6 +19,7 @@ from utils import (
     get_include_analysis_edge_prevalence,
     get_include_analysis_edge_sizes,
     get_include_file_size,
+    get_latest_include_analysis,
     load_config,
     normalize_include_path,
 )
@@ -141,6 +142,7 @@ def main():
     parser.add_argument(
         "include_analysis_output",
         type=argparse.FileType("r"),
+        nargs="?",
         help="The include analysis output to use.",
     )
     parser.add_argument("filename", help="File to list includes for.")
@@ -177,8 +179,14 @@ def main():
         print("error: --apply-changes option requires --include-changes")
         return 1
 
+    # If the user specified an include analysis output file, use that instead of fetching it
+    if args.include_analysis_output:
+        raw_include_analysis = args.include_analysis_output.read()
+    else:
+        raw_include_analysis = get_latest_include_analysis()
+
     try:
-        include_analysis = parse_raw_include_analysis_output(args.include_analysis_output.read())
+        include_analysis = parse_raw_include_analysis_output(raw_include_analysis)
     except ParseError as e:
         message = str(e)
         print("error: Could not parse include analysis output file")

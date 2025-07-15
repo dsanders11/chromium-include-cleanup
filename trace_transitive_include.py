@@ -11,7 +11,7 @@ import networkx as nx
 
 from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
 from typing import Iterator, Tuple
-from utils import create_graph_from_include_analysis
+from utils import create_graph_from_include_analysis, get_latest_include_analysis
 
 
 def trace_transitive_include(
@@ -33,6 +33,7 @@ def main():
     parser.add_argument(
         "include_analysis_output",
         type=argparse.FileType("r"),
+        nargs="?",
         help="The include analysis output to use.",
     )
     parser.add_argument("filename", help="File to start the trace from.")
@@ -40,8 +41,14 @@ def main():
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
 
+    # If the user specified an include analysis output file, use that instead of fetching it
+    if args.include_analysis_output:
+        raw_include_analysis = args.include_analysis_output.read()
+    else:
+        raw_include_analysis = get_latest_include_analysis()
+
     try:
-        include_analysis = parse_raw_include_analysis_output(args.include_analysis_output.read())
+        include_analysis = parse_raw_include_analysis_output(raw_include_analysis)
     except ParseError as e:
         message = str(e)
         print("error: Could not parse include analysis output file")

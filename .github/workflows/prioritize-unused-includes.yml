@@ -115,8 +115,8 @@ jobs:
 
             if (unusedIncludes.length > 0) {
               core.summary.addHeading('✂️ Priority Unused Chromium Includes');
+              core.summary.addRaw(`\n> [!NOTE]\n> These are suggestions from \`clangd\` and are known to contain false positives.\n\n`);
               core.summary.addRaw(`Found ${unusedIncludes.length} unused includes over 10 MB of added size for a total of ${totalAddedSize.toLocaleString()} bytes of added size`);
-              core.summary.addBreak();
 
               const newlySeen = unusedIncludes.filter(([, , , , , , cacheHit]) => !cacheHit)
               if (newlySeen.length > 0) {

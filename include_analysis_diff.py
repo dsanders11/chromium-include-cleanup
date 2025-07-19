@@ -104,8 +104,8 @@ def include_analysis_diff(
     delta = analysis_date - previous_analysis_date
     previous_analyses[delta.days] = immediately_previous_analysis
 
-    # Look for previous week and previous 30 days
-    for min_days_delta in (7, 30):
+    # Look for a multitude of previous data points
+    for min_days_delta in (3, 7, 14, 30, 45):
         for previous_analysis_url in analysis_list:
             match = FILENAME_DATE_REGEX.search(previous_analysis_url)
             if match is None:

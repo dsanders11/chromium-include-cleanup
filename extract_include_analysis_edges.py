@@ -42,7 +42,7 @@ def extract_include_analysis_edges(
             if weight_threshold and float(size) < weight_threshold:
                 continue
 
-            prevalence = expanded_size_edge_weights[file][include]
+            prevalence = prevalence_edge_weights[file][include]
             expanded_size = expanded_size_edge_weights[file][include]
             centrality = centrality_edge_weights[file][include]
 

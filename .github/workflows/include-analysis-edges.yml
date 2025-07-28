@@ -43,7 +43,6 @@ jobs:
 
             const includes = await Promise.all(data.split('\n').map(async (line, idx) => {
               const [filename, include, added_size, prevalence, expanded_size, centrality] = line.trim().split(',');
-              const addedSize = parseInt(added_size);
 
               // Check if this is known from a previous run
               const cacheKey = `heavy-chromium-include-${filename}-${include}`;
@@ -60,10 +59,10 @@ jobs:
 
               return [
                 `${filename} --> ${include.replace(/</g, '&lt;').replace(/>/g, '&gt;')}`,
-                addedSize,
-                parseFloat(prevalenceData[idx].trim().split(',')[4]),
-                parseInt(expandedSizeData[idx].trim().split(',')[4]),
-                parseFloat(centralityData[idx].trim().split(',')[4]),
+                parseInt(added_size),
+                parseFloat(prevalence),
+                parseInt(expanded_size),
+                parseFloat(centrality),
                 cacheHit,
               ];
             }));

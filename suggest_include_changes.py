@@ -142,7 +142,7 @@ async def main():
     parser.add_argument(
         "--restart-clangd-after", type=int, default=350, help="Restart clangd every N files processed."
     )
-    parser.add_argument("--timeout", type=int, default=30, help="How long to wait for suggestions on any given file.")
+    parser.add_argument("--timeout", type=int, default=180, help="How long to wait for suggestions on any given file.")
     parser.add_argument(
         "--filter-third-party", action="store_true", help="Filter out third_party/ (excluding blink) and v8."
     )

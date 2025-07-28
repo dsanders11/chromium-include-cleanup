@@ -92,7 +92,7 @@ jobs:
             core.summary.addHeading('🔗 Heavy Chromium Includes');
             core.summary.addRaw(`Found ${includes.length} unused includes over 75 MB`);
 
-            const newlySeen = unusedIncludes.filter(([, , , , , cacheHit]) => !cacheHit)
+            const newlySeen = includes.filter(([, , , , , cacheHit]) => !cacheHit)
             if (newlySeen.length > 0) {
               core.summary.addHeading('Not Seen Before', '2');
               addTable(newlySeen);
@@ -101,6 +101,6 @@ jobs:
               core.summary.addBreak();
             }
 
-            addTable(unusedIncludes);
+            addTable(includes);
 
             await core.summary.write();

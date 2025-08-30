@@ -65,63 +65,67 @@ def include_analysis_diff(
     min_edge_size: int,
     increase_percentage_threshold: int,
     increase_from_zero_threshold: int,
+    previous_include_analysis: IncludeAnalysisOutput = None,
 ):
     analysis_date = parse_include_analysis_date(include_analysis["date"])
 
     flagged_nodes = set()
     flagged_edges = set()
 
-    analysis_list = extract_include_analysis_list()
-    analysis_filename_prefix = f"{CHROMIUM_INCLUDE_ANALYSIS_BASE_URL}/chrome_includes_{analysis_date.year}-{analysis_date.month:02d}-{analysis_date.day:02d}"
+    if previous_include_analysis:
+        previous_analyses = {-1: previous_include_analysis}
+    else:
+        analysis_list = extract_include_analysis_list()
+        analysis_filename_prefix = f"{CHROMIUM_INCLUDE_ANALYSIS_BASE_URL}/chrome_includes_{analysis_date.year}-{analysis_date.month:02d}-{analysis_date.day:02d}"
 
-    # Find index of the provided analysis in case it is not the most recent
-    analysis_idx = -1
+        # Find index of the provided analysis in case it is not the most recent
+        analysis_idx = -1
 
-    # Unfortunately the embedded date is not the same as the filename date,
-    # they appear to differ by some amount of seconds, but the filename
-    # always has the later timestamp, and the analysis runs are several
-    # hours apart, so only check the prefix for the correct hour and the
-    # next one as well to account for rollover into the next hour
-    for idx, url in enumerate(analysis_list):
-        if url.startswith(f"{analysis_filename_prefix}_{analysis_date.hour:02d}") or url.startswith(
-            f"{analysis_filename_prefix}_{(analysis_date.hour + 1):02d}"
-        ):
-            analysis_idx = idx
-            break
-
-    if analysis_idx == -1:
-        raise RuntimeError("Could not find the analysis in the archive list")
-
-    # Gather previous analyses to compare to if they exist:
-    #  * Immediately previous analysis
-    #  * At least one week previous
-    #  * At least 30 days previous
-    previous_analyses = {}
-
-    # First get the immediately previous analysis
-    immediately_previous_analysis = get_archived_include_analysis(analysis_list[analysis_idx + 1])
-    previous_analysis_date = parse_include_analysis_date(immediately_previous_analysis["date"])
-    delta = analysis_date - previous_analysis_date
-    previous_analyses[delta.days] = immediately_previous_analysis
-
-    # Look for a multitude of previous data points
-    for min_days_delta in (3, 7, 14, 30, 45):
-        for previous_analysis_url in analysis_list:
-            match = FILENAME_DATE_REGEX.search(previous_analysis_url)
-            if match is None:
-                raise RuntimeError(f"Could not parse date from URL: {previous_analysis_url}")
-
-            # Determine the analysis date from the filename
-            previous_analysis_date = datetime.strptime(match.group(1).strip(), "%Y-%m-%d_%H%M%S")
-            delta = analysis_date - previous_analysis_date
-
-            if delta.days >= min_days_delta:
-                # This has already been covered, e.g, previous analysis was already that many days ago
-                if delta.days in previous_analyses:
-                    break
-
-                previous_analyses[delta.days] = get_archived_include_analysis(previous_analysis_url)
+        # Unfortunately the embedded date is not the same as the filename date,
+        # they appear to differ by some amount of seconds, but the filename
+        # always has the later timestamp, and the analysis runs are several
+        # hours apart, so only check the prefix for the correct hour and the
+        # next one as well to account for rollover into the next hour
+        for idx, url in enumerate(analysis_list):
+            if url.startswith(f"{analysis_filename_prefix}_{analysis_date.hour:02d}") or url.startswith(
+                f"{analysis_filename_prefix}_{(analysis_date.hour + 1):02d}"
+            ):
+                analysis_idx = idx
                 break
+
+        if analysis_idx == -1:
+            raise RuntimeError("Could not find the analysis in the archive list")
+
+        # Gather previous analyses to compare to if they exist:
+        #  * Immediately previous analysis
+        #  * At least one week previous
+        #  * At least 30 days previous
+        previous_analyses = {}
+
+        # First get the immediately previous analysis
+        immediately_previous_analysis = get_archived_include_analysis(analysis_list[analysis_idx + 1])
+        previous_analysis_date = parse_include_analysis_date(immediately_previous_analysis["date"])
+        delta = analysis_date - previous_analysis_date
+        previous_analyses[delta.days] = immediately_previous_analysis
+
+        # Look for a multitude of previous data points
+        for min_days_delta in (3, 7, 14, 30, 45):
+            for previous_analysis_url in analysis_list:
+                match = FILENAME_DATE_REGEX.search(previous_analysis_url)
+                if match is None:
+                    raise RuntimeError(f"Could not parse date from URL: {previous_analysis_url}")
+
+                # Determine the analysis date from the filename
+                previous_analysis_date = datetime.strptime(match.group(1).strip(), "%Y-%m-%d_%H%M%S")
+                delta = analysis_date - previous_analysis_date
+
+                if delta.days >= min_days_delta:
+                    # This has already been covered, e.g, previous analysis was already that many days ago
+                    if delta.days in previous_analyses:
+                        break
+
+                    previous_analyses[delta.days] = get_archived_include_analysis(previous_analysis_url)
+                    break
 
     # Filter out anything that isn't direct Chromium code
     filenames = filter_filenames(
@@ -153,7 +157,7 @@ def include_analysis_diff(
             if flag_node and filename not in flagged_nodes:
                 flagged_nodes.add(filename)
                 yield (
-                    previous_analysis["url"],
+                    previous_analysis["url"] if "url" in previous_analysis else "",
                     previous_analysis["revision"],
                     previous_analysis["date"],
                     filename,
@@ -192,7 +196,7 @@ def include_analysis_diff(
                 if flag_edge:
                     flagged_edges.add((filename, header))
                     yield (
-                        previous_analysis["url"],
+                        previous_analysis["url"] if "url" in previous_analysis else "",
                         previous_analysis["revision"],
                         previous_analysis["date"],
                         filename,
@@ -211,6 +215,12 @@ def main():
         type=argparse.FileType("r"),
         nargs="?",
         help="The include analysis output to use.",
+    )
+    parser.add_argument(
+        "previous_include_analysis_output",
+        type=argparse.FileType("r"),
+        nargs="?",
+        help="The previous include analysis output to use. If provided, the diff will only be between these two files.",
     )
     parser.add_argument(
         "--min-edge-size",
@@ -255,6 +265,20 @@ def main():
             print(message)
         return 2
 
+    if args.previous_include_analysis_output:
+        raw_previous_include_analysis = args.previous_include_analysis_output.read()
+
+        try:
+            previous_include_analysis = parse_raw_include_analysis_output(raw_previous_include_analysis)
+        except ParseError as e:
+            message = str(e)
+            print("error: Could not parse include analysis output file")
+            if message:
+                print(message)
+            return 2
+    else:
+        previous_include_analysis = None
+
     csv_writer = csv.writer(sys.stdout)
 
     try:
@@ -263,6 +287,7 @@ def main():
             args.min_edge_size * 1024 * 1024,
             args.increase_percentage_threshold,
             args.increase_from_zero_threshold * 1024 * 1024,
+            previous_include_analysis=previous_include_analysis,
         ):
             csv_writer.writerow(row)
 

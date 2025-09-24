@@ -28,6 +28,7 @@ def list_includers(
     filename: str,
     metric: str = None,
     transitive=False,
+    weight_threshold: float = None,
     changes: List[Change] = None,
     ignores: IgnoresConfiguration = None,
     filter_generated_files=False,
@@ -94,6 +95,10 @@ def list_includers(
 
         weight = edge_weights[includer][included] if metric else None
 
+        if weight_threshold is not None and weight is not None:
+            if float(weight) < weight_threshold:
+                continue
+
         yield (includer, included, weight)
 
 
@@ -118,6 +123,9 @@ def main():
         choices=["centrality", "expanded_size", "file_size", "includer_size", "input_size", "prevalence"],
         default="prevalence",
         help="Metric to use for edge weights.",
+    )
+    parser.add_argument(
+        "--weight-threshold", type=float, help="Filter out includers with a weight value below the threshold."
     )
     parser.add_argument(
         "--filter-third-party", action="store_true", help="Filter out third_party/ (excluding blink) and v8."
@@ -167,6 +175,7 @@ def main():
             args.filename,
             args.metric,
             transitive=args.transitive,
+            weight_threshold=args.weight_threshold,
             changes=list(csv.reader(args.include_changes)) if args.include_changes else None,
             ignores=ignores,
             filter_generated_files=not args.no_filter_generated_files,

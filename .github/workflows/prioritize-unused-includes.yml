@@ -8,8 +8,8 @@ on:
 permissions: {}
 
 jobs:
-  prioritize_unused_chromium_includes:
-    name: Prioritize Unused Chromium Includes
+  prioritized_unused_chromium_includes_added_size:
+    name: Prioritized Unused Includes (Added Size)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -117,6 +117,131 @@ jobs:
               core.summary.addHeading('✂️ Priority Unused Chromium Includes');
               core.summary.addRaw(`\n> [!NOTE]\n> These are suggestions from \`clangd\` and are known to contain false positives.\n\n`);
               core.summary.addRaw(`Found ${unusedIncludes.length} unused includes over 10 MB of added size for a total of ${totalAddedSize.toLocaleString()} bytes of added size`);
+
+              const newlySeen = unusedIncludes.filter(([, , , , , , cacheHit]) => !cacheHit)
+              if (newlySeen.length > 0) {
+                core.summary.addHeading('Not Seen Before', '2');
+                addTable(newlySeen);
+                core.summary.addHeading('All Unused Includes', '2');
+              } else {
+                core.summary.addBreak();
+              }
+
+              addTable(unusedIncludes);
+            } else {
+              core.summary.addRaw('🎉 No priority unused Chromium includes');
+            }
+
+            await core.summary.write();
+  prioritized_unused_chromium_includes_prevalence:
+    name: Prioritized Unused Includes (Prevalence)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: dsanders11/chromium-include-cleanup
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+      - name: Download Unused Includes Output
+        run: |
+          curl https://gist.githubusercontent.com/dsanders11/ccf3505dcbb35492cbadade1ceb663b6/raw/unused-includes.csv > unused-includes.csv
+      - name: Download Include Analysis Output
+        run: |
+          curl https://commondatastorage.googleapis.com/chromium-browser-clang/include-analysis.js > include-analysis.js
+      - name: Find Priority Unused Includes
+        run: |
+          python set_edge_weights.py unused-includes.csv include-analysis.js --config chromium > weighted-unused-includes.csv
+          python filter_include_changes.py weighted-unused-includes.csv --config chromium --filter-third-party --no-filter-mojom-headers --weight-threshold 10000000 > priority-unused-includes.csv
+          python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric expanded_size > priority-unused-includes.expanded_size.csv
+          python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric prevalence > priority-unused-includes.prevalence.csv
+          python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric includer_size > priority-unused-includes.includer_size.csv
+          python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric centrality > priority-unused-includes.centrality.csv
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: weighted-unused-includes
+          path: |
+            weighted-unused-includes.csv
+            priority-unused-includes.csv
+            priority-unused-includes.expanded_size.csv
+            priority-unused-includes.prevalence.csv
+            priority-unused-includes.includer_size.csv
+            priority-unused-includes.centrality.csv
+      - run: npm install @actions/cache
+      - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const fs = require('node:fs');
+            const cache = require('@actions/cache');
+
+            const data = fs.readFileSync('./priority-unused-includes.csv', 'utf8').trim();
+            const expandedSizeData = fs.readFileSync('./priority-unused-includes.expanded_size.csv', 'utf8').trim().split('\n');
+            const prevalenceData = fs.readFileSync('./priority-unused-includes.prevalence.csv', 'utf8').trim().split('\n');
+            const includerSizeData = fs.readFileSync('./priority-unused-includes.includer_size.csv', 'utf8').trim().split('\n');
+            const centralityData = fs.readFileSync('./priority-unused-includes.centrality.csv', 'utf8').trim().split('\n');
+            let totalAddedSize = 0;
+
+            const unusedIncludes = await Promise.all(data.split('\n').map(async (line, idx) => {
+              const [,, filename, include, added_size] = line.trim().split(',');
+              const addedSize = parseInt(added_size);
+              totalAddedSize += addedSize;
+
+              // Check if this is known from a previous run
+              const cacheKey = `prioritize-unused-chromium-${filename}-${include}`;
+              const cacheHit =
+                (await cache.restoreCache(['/dev/null'], cacheKey, undefined, {
+                  lookupOnly: true,
+                })) !== undefined;
+
+              if (!cacheHit) {
+                // Create a cache entry (only the name matters) to keep track of
+                // includes we've seen from previous runs to mark them as stale
+                await cache.saveCache(['/dev/null'], cacheKey);
+              }
+
+              return [
+                `${filename} --> ${include.replace(/</g, '&lt;').replace(/>/g, '&gt;')}`,
+                parseFloat(prevalenceData[idx].trim().split(',')[4]),
+                addedSize,
+                parseInt(expandedSizeData[idx].trim().split(',')[4]),
+                parseInt(includerSizeData[idx].trim().split(',')[4]),
+                parseFloat(centralityData[idx].trim().split(',')[4]),
+                cacheHit,
+              ];
+            }));
+
+            const addTable = (includes) => {
+              core.summary.addTable([
+                [
+                  { data: 'Include Edge', header: true },
+                  { data: 'Prevalence', header: true },
+                  { data: 'Added Size', header: true },
+                  { data: 'Expanded Size', header: true },
+                  { data: 'Includer Size', header: true },
+                  { data: 'Centrality', header: true },
+                ],
+                // Sort by prevalence, then convert it back to string or it won't render
+                ...includes
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([edge, prevalence, added_size, expandedSize, includerSize, centrality]) => [
+                    edge,
+                    `${prevalence.toFixed(2)}%`,
+                    added_size.toLocaleString(),
+                    expandedSize.toLocaleString(),
+                    includerSize.toLocaleString(),
+                    centrality.toFixed(5),
+                  ]),
+              ]);
+            }
+
+            if (unusedIncludes.length > 0) {
+              core.summary.addHeading('✂️ Priority Unused Chromium Includes');
+              core.summary.addRaw(`\n> [!NOTE]\n> These are suggestions from \`clangd\` and are known to contain false positives.\n\n`);
+              core.summary.addRaw(`Found ${unusedIncludes.length} unused includes with over 5% prevalence`);
 
               const newlySeen = unusedIncludes.filter(([, , , , , , cacheHit]) => !cacheHit)
               if (newlySeen.length > 0) {

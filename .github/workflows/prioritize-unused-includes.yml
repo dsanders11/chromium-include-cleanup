@@ -8,8 +8,8 @@ on:
 permissions: {}
 
 jobs:
-  prioritized_unused_chromium_includes_added_size:
-    name: Prioritized Unused Includes (Added Size)
+  prioritized_by_added_size:
+    name: Prioritized by added size
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -133,8 +133,9 @@ jobs:
             }
 
             await core.summary.write();
-  prioritized_unused_chromium_includes_prevalence:
-    name: Prioritized Unused Includes (Prevalence)
+
+  prioritized_by_prevalence:
+    name: Prioritized by prevalence
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -161,16 +162,6 @@ jobs:
           python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric prevalence > priority-unused-includes.prevalence.csv
           python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric includer_size > priority-unused-includes.includer_size.csv
           python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric centrality > priority-unused-includes.centrality.csv
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: weighted-unused-includes
-          path: |
-            weighted-unused-includes.csv
-            priority-unused-includes.csv
-            priority-unused-includes.expanded_size.csv
-            priority-unused-includes.prevalence.csv
-            priority-unused-includes.includer_size.csv
-            priority-unused-includes.centrality.csv
       - run: npm install @actions/cache
       - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:

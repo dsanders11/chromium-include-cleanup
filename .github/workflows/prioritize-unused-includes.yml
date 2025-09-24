@@ -157,7 +157,7 @@ jobs:
       - name: Find Priority Unused Includes
         run: |
           python set_edge_weights.py unused-includes.csv include-analysis.js --config chromium --metric prevalence > weighted-unused-includes.csv
-          python filter_include_changes.py weighted-unused-includes.csv --config chromium --filter-third-party --no-filter-mojom-headers --weight-threshold 5 > priority-unused-includes.csv
+          python filter_include_changes.py weighted-unused-includes.csv --config chromium --filter-third-party --no-filter-mojom-headers --weight-threshold 5 > priority-unused-includes.prevalence.csv
           python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric expanded_size > priority-unused-includes.expanded_size.csv
           python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric input_size > priority-unused-includes.input_size.csv
           python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric includer_size > priority-unused-includes.includer_size.csv
@@ -169,20 +169,17 @@ jobs:
             const fs = require('node:fs');
             const cache = require('@actions/cache');
 
-            const data = fs.readFileSync('./priority-unused-includes.csv', 'utf8').trim();
+            const addedSizeData = fs.readFileSync('./priority-unused-includes.input_size.csv', 'utf8').trim();
             const expandedSizeData = fs.readFileSync('./priority-unused-includes.expanded_size.csv', 'utf8').trim().split('\n');
             const prevalenceData = fs.readFileSync('./priority-unused-includes.prevalence.csv', 'utf8').trim().split('\n');
             const includerSizeData = fs.readFileSync('./priority-unused-includes.includer_size.csv', 'utf8').trim().split('\n');
             const centralityData = fs.readFileSync('./priority-unused-includes.centrality.csv', 'utf8').trim().split('\n');
-            let totalAddedSize = 0;
 
-            const unusedIncludes = await Promise.all(data.split('\n').map(async (line, idx) => {
-              const [,, filename, include, added_size] = line.trim().split(',');
-              const addedSize = parseInt(added_size);
-              totalAddedSize += addedSize;
+            const unusedIncludes = await Promise.all(prevalenceData.split('\n').map(async (line, idx) => {
+              const [,, filename, include, prevalence] = line.trim().split(',');
 
               // Check if this is known from a previous run
-              const cacheKey = `prioritize-unused-chromium-${filename}-${include}`;
+              const cacheKey = `prioritize-unused-chromium-${filename}-${include}-prevalence`;
               const cacheHit =
                 (await cache.restoreCache(['/dev/null'], cacheKey, undefined, {
                   lookupOnly: true,
@@ -196,8 +193,8 @@ jobs:
 
               return [
                 `${filename} --> ${include.replace(/</g, '&lt;').replace(/>/g, '&gt;')}`,
-                parseFloat(prevalenceData[idx].trim().split(',')[4]),
-                addedSize,
+                parseFloat(prevalence),
+                parseInt(addedSizeData[idx].trim().split(',')[4]),
                 parseInt(expandedSizeData[idx].trim().split(',')[4]),
                 parseInt(includerSizeData[idx].trim().split(',')[4]),
                 parseFloat(centralityData[idx].trim().split(',')[4]),

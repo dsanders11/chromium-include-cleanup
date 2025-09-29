@@ -90,7 +90,7 @@ jobs:
             }
 
             core.summary.addHeading('🔗 Heavy Chromium Includes');
-            core.summary.addRaw(`Found ${includes.length} unused includes over 75 MB`);
+            core.summary.addRaw(`Found ${includes.length} include edges over 75 MB`);
 
             const newlySeen = includes.filter(([, , , , , cacheHit]) => !cacheHit)
             if (newlySeen.length > 0) {

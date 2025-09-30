@@ -169,9 +169,9 @@ jobs:
                   { data: 'Expanded Size', header: true },
                   { data: 'Centrality', header: true },
                 ],
-                // Sort by added size, then convert it back to string or it won't render
+                // Sort by prevalence, then convert it back to string or it won't render
                 ...includes
-                  .sort((a, b) => b[1] - a[1])
+                  .sort((a, b) => b[2] - a[2])
                   .map(([edge, added_size, prevalence, expandedSize, centrality]) => [
                     edge,
                     `${prevalence.toFixed(2)}%`,

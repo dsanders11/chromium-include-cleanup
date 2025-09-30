@@ -55,7 +55,7 @@ def extract_include_analysis_edges(
             else:
                 weight = None
 
-            if weight_threshold and weight and float(weight) < weight_threshold:
+            if weight_threshold and weight is not None and float(weight) < weight_threshold:
                 continue
 
             yield file, include, size, prevalence, expanded_size, centrality

@@ -302,6 +302,10 @@
           "base/immediate_crash.h"
         ],
         [
+          "base/check_op.h",
+          "base/types/is_arc_pointer.h"
+        ],
+        [
           "base/debug/crash_logging.h",
           "base/strings/string_number_conversions.h"
         ],

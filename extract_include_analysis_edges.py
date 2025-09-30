@@ -21,6 +21,7 @@ from utils import (
 
 def extract_include_analysis_edges(
     include_analysis: IncludeAnalysisOutput,
+    metric: str = None,
     weight_threshold=None,
     filter_generated_files=False,
     filter_mojom_headers=False,
@@ -39,12 +40,23 @@ def extract_include_analysis_edges(
 
     for file in filenames:
         for [include, size] in include_analysis["esizes"][file].items():
-            if weight_threshold and float(size) < weight_threshold:
-                continue
-
             prevalence = prevalence_edge_weights[file][include]
             expanded_size = expanded_size_edge_weights[file][include]
             centrality = centrality_edge_weights[file][include]
+
+            if metric == "input_size":
+                weight = size
+            elif metric == "expanded_size":
+                weight = expanded_size
+            elif metric == "centrality":
+                weight = centrality
+            elif metric == "prevalence":
+                weight = prevalence
+            else:
+                weight = None
+
+            if weight_threshold and weight and float(weight) < weight_threshold:
+                continue
 
             yield file, include, size, prevalence, expanded_size, centrality
 
@@ -56,6 +68,12 @@ def main():
         type=argparse.FileType("r"),
         nargs="?",
         help="The include analysis output to use.",
+    )
+    parser.add_argument(
+        "--metric",
+        choices=["centrality", "expanded_size", "input_size", "prevalence"],
+        default="input_size",
+        help="Metric to use for edge weights.",
     )
     parser.add_argument(
         "--weight-threshold", type=float, help="Filter out changes with a weight value below the threshold."
@@ -95,6 +113,7 @@ def main():
     try:
         for row in extract_include_analysis_edges(
             include_analysis,
+            metric=args.metric,
             weight_threshold=args.weight_threshold,
             filter_generated_files=args.filter_generated_files,
             filter_mojom_headers=args.filter_mojom_headers,

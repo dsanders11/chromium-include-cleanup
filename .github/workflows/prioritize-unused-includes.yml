@@ -271,10 +271,10 @@ jobs:
         run: |
           python set_edge_weights.py unused-includes.csv include-analysis.js --config chromium --metric centrality > weighted-unused-includes.csv
           python filter_include_changes.py weighted-unused-includes.csv --config chromium --filter-third-party --no-filter-mojom-headers --weight-threshold 0.001 > priority-unused-includes.centrality.csv
-          python set_edge_weights.py priority-unused-includes.prevalence.csv include-analysis.js --config chromium --metric expanded_size > priority-unused-includes.expanded_size.csv
-          python set_edge_weights.py priority-unused-includes.prevalence.csv include-analysis.js --config chromium --metric input_size > priority-unused-includes.input_size.csv
-          python set_edge_weights.py priority-unused-includes.prevalence.csv include-analysis.js --config chromium --metric includer_size > priority-unused-includes.includer_size.csv
-          python set_edge_weights.py priority-unused-includes.prevalence.csv include-analysis.js --config chromium --metric prevalence > priority-unused-includes.prevalence.csv
+          python set_edge_weights.py priority-unused-includes.centrality.csv include-analysis.js --config chromium --metric expanded_size > priority-unused-includes.expanded_size.csv
+          python set_edge_weights.py priority-unused-includes.centrality.csv include-analysis.js --config chromium --metric input_size > priority-unused-includes.input_size.csv
+          python set_edge_weights.py priority-unused-includes.centrality.csv include-analysis.js --config chromium --metric includer_size > priority-unused-includes.includer_size.csv
+          python set_edge_weights.py priority-unused-includes.centrality.csv include-analysis.js --config chromium --metric prevalence > priority-unused-includes.prevalence.csv
       - run: npm install @actions/cache
       - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:

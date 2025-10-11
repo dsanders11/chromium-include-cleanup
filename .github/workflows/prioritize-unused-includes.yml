@@ -306,9 +306,9 @@ jobs:
 
               return [
                 `${filename} --> ${include.replace(/</g, '&lt;').replace(/>/g, '&gt;')}`,
-                parseFloat(centralityData[idx].trim().split(',')[4]),
+                parseFloat(centrality),
                 parseInt(addedSizeData[idx].trim().split(',')[4]),
-                parseFloat(prevalence),
+                parseFloat(prevalenceData[idx].trim().split(',')[4]),
                 parseInt(expandedSizeData[idx].trim().split(',')[4]),
                 parseInt(includerSizeData[idx].trim().split(',')[4]),
                 cacheHit,

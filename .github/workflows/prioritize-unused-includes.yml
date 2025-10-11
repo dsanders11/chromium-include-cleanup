@@ -270,7 +270,7 @@ jobs:
       - name: Find Priority Unused Includes
         run: |
           python set_edge_weights.py unused-includes.csv include-analysis.js --config chromium --metric centrality > weighted-unused-includes.csv
-          python filter_include_changes.py weighted-unused-includes.csv --config chromium --filter-third-party --no-filter-mojom-headers --weight-threshold 0.001 > priority-unused-includes.centrality.csv
+          python filter_include_changes.py weighted-unused-includes.csv --config chromium --filter-third-party --no-filter-mojom-headers --weight-threshold 0.005 > priority-unused-includes.centrality.csv
           python set_edge_weights.py priority-unused-includes.centrality.csv include-analysis.js --config chromium --metric expanded_size > priority-unused-includes.expanded_size.csv
           python set_edge_weights.py priority-unused-includes.centrality.csv include-analysis.js --config chromium --metric input_size > priority-unused-includes.input_size.csv
           python set_edge_weights.py priority-unused-includes.centrality.csv include-analysis.js --config chromium --metric includer_size > priority-unused-includes.includer_size.csv
@@ -342,7 +342,7 @@ jobs:
             if (unusedIncludes.length > 0) {
               core.summary.addHeading('✂️ Priority Unused Chromium Includes');
               core.summary.addRaw(`\n> [!NOTE]\n> These are suggestions from \`clangd\` and are known to contain false positives.\n\n`);
-              core.summary.addRaw(`Found ${unusedIncludes.length} unused includes with > 0.001 centrality`);
+              core.summary.addRaw(`Found ${unusedIncludes.length} unused includes with >= 0.005 centrality`);
 
               const newlySeen = unusedIncludes.filter(([, , , , , , cacheHit]) => !cacheHit)
               if (newlySeen.length > 0) {

@@ -59,7 +59,7 @@ jobs:
 
             const rows = fs.readFileSync('./include-analysis-diff.csv', 'utf8').trim().split('\n').map((line) => line.trim().split(','));
 
-            // If there's no include listed, the file itself increased in size
+            // If there's no include listed, the file itself changed in size
             const files = rows.filter((row) => row[4] === '').map((row) => [row[0], row[1], row[2], row[3], parseInt(row[5]), parseInt(row[6])]);
             const edges = rows.filter((row) => row[4] !== '').map((row) => [row[0], row[1], row[2], `${row[3]} --> ${row[4]}`, parseInt(row[5]), parseInt(row[6])]);
 
@@ -69,12 +69,12 @@ jobs:
               core.summary.addBreak();
               
               if (files.length > 0) {
-                core.summary.addHeading('Added Size Increases in Files', '2');
+                core.summary.addHeading('Added Size Changes in Files', '2');
                 core.summary.addTable([
                   [
                     { data: 'Previous Analysis', header: true },
                     { data: 'Filename', header: true },
-                    { data: 'Added Size Increase', header: true },
+                    { data: 'Added Size Change', header: true },
                     { data: 'Total Added Size', header: true },
                   ],
                   // Sort by added size, then convert it back to string or it won't render
@@ -84,19 +84,19 @@ jobs:
                       `<a href="${url}" title="${revision}">${date}</a>`,
                       // `<a href="${url}#view=files&filter=${encodeURIComponent("^" + filename + "$")}">${filename}</a>`,
                       filename,
-                      `+${addedSize.toLocaleString()}`,
+                      `${addedSize > 0 ? '+' : '-'}${addedSize.toLocaleString()}`,
                       totalSize.toLocaleString(),
                     ]),
                 ]);
               }
 
               if (edges.length > 0) {
-                core.summary.addHeading('Added Size Increases in Edges', '2');
+                core.summary.addHeading('Added Size Changes in Edges', '2');
                 core.summary.addTable([
                   [
                     { data: 'Previous Analysis', header: true },
                     { data: 'Include Edge', header: true },
-                    { data: 'Added Size Increase', header: true },
+                    { data: 'Added Size Change', header: true },
                     { data: 'Total Added Size', header: true },
                   ],
                   // Sort by added size, then convert it back to string or it won't render
@@ -106,7 +106,7 @@ jobs:
                       `<a href="${url}" title="${revision}">${date}</a>`,
                       // `<a href="${url}#view=edges&includer=${encodeURIComponent("^" + edge.split(" ")[0] + "$")}&included=${encodeURIComponent("^" + edge.split(" ").at(-1) + "$")}"">${edge}</a>`,
                       edge,
-                      `+${addedSize.toLocaleString()}`,
+                      `${addedSize > 0 ? '+' : '-'}${addedSize.toLocaleString()}`,
                       totalSize.toLocaleString(),
                     ]),
                 ]);

@@ -84,7 +84,7 @@ jobs:
                       `<a href="${url}" title="${revision}">${date}</a>`,
                       // `<a href="${url}#view=files&filter=${encodeURIComponent("^" + filename + "$")}">${filename}</a>`,
                       filename,
-                      `${addedSize > 0 ? '+' : '-'}${addedSize.toLocaleString()}`,
+                      `${addedSize > 0 ? '+' : ''}${addedSize.toLocaleString()}`,
                       totalSize.toLocaleString(),
                     ]),
                 ]);
@@ -106,7 +106,7 @@ jobs:
                       `<a href="${url}" title="${revision}">${date}</a>`,
                       // `<a href="${url}#view=edges&includer=${encodeURIComponent("^" + edge.split(" ")[0] + "$")}&included=${encodeURIComponent("^" + edge.split(" ").at(-1) + "$")}"">${edge}</a>`,
                       edge,
-                      `${addedSize > 0 ? '+' : '-'}${addedSize.toLocaleString()}`,
+                      `${addedSize > 0 ? '+' : ''}${addedSize.toLocaleString()}`,
                       totalSize.toLocaleString(),
                     ]),
                 ]);

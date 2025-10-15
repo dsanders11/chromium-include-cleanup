@@ -64,6 +64,7 @@ def include_analysis_diff(
     include_analysis: IncludeAnalysisOutput,
     min_edge_size: int,
     increase_percentage_threshold: int,
+    decrease_percentage_threshold: int,
     increase_from_zero_threshold: int,
     previous_include_analysis: IncludeAnalysisOutput = None,
 ):
@@ -150,9 +151,13 @@ def include_analysis_diff(
             # Flag the file itself, not just an edge, if it has a significant increase
             if previous_size == 0:
                 flag_node = difference >= increase_from_zero_threshold
-            elif current_size > min_edge_size:
-                increase_percentage = difference / float(previous_size)
-                flag_node = increase_percentage >= increase_percentage_threshold / 100.0
+            elif current_size > min_edge_size or previous_size > min_edge_size:
+                if current_size > previous_size:
+                    increase_percentage = difference / float(previous_size)
+                    flag_node = increase_percentage >= increase_percentage_threshold / 100.0
+                else:
+                    decrease_percentage = abs(difference) / float(previous_size)
+                    flag_node = decrease_percentage >= decrease_percentage_threshold / 100.0
 
             if flag_node and filename not in flagged_nodes:
                 flagged_nodes.add(filename)
@@ -180,7 +185,7 @@ def include_analysis_diff(
                 current_size = include_analysis["esizes"][filename][header]
 
                 # To cut down on noise, skip edges which are too small to care about
-                if current_size < min_edge_size:
+                if current_size < min_edge_size and previous_size < min_edge_size:
                     continue
 
                 difference = current_size - previous_size
@@ -189,9 +194,12 @@ def include_analysis_diff(
                 # and instead we use an absolute increase in size - otherwise percentage
                 if previous_size == 0:
                     flag_edge = difference >= increase_from_zero_threshold
-                else:
+                elif current_size > previous_size:
                     increase_percentage = difference / float(previous_size)
                     flag_edge = increase_percentage >= increase_percentage_threshold / 100.0
+                else:
+                    decrease_percentage = abs(difference) / float(previous_size)
+                    flag_node = decrease_percentage >= decrease_percentage_threshold / 100.0
 
                 if flag_edge:
                     flagged_edges.add((filename, header))
@@ -232,6 +240,12 @@ def main():
         "--increase-percentage-threshold",
         type=int,
         help="Increase percentage threshold before flagging increase. 0-100.",
+        default=50,
+    )
+    parser.add_argument(
+        "--decrease-percentage-threshold",
+        type=int,
+        help="Decrease percentage threshold before flagging increase. 0-100.",
         default=50,
     )
     parser.add_argument(
@@ -286,6 +300,7 @@ def main():
             include_analysis,
             args.min_edge_size * 1024 * 1024,
             args.increase_percentage_threshold,
+            args.decrease_percentage_threshold,
             args.increase_from_zero_threshold * 1024 * 1024,
             previous_include_analysis=previous_include_analysis,
         ):

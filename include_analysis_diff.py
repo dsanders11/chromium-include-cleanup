@@ -199,7 +199,7 @@ def include_analysis_diff(
                     flag_edge = increase_percentage >= increase_percentage_threshold / 100.0
                 else:
                     decrease_percentage = abs(difference) / float(previous_size)
-                    flag_node = decrease_percentage >= decrease_percentage_threshold / 100.0
+                    flag_edge = decrease_percentage >= decrease_percentage_threshold / 100.0
 
                 if flag_edge:
                     flagged_edges.add((filename, header))

@@ -12,6 +12,7 @@ from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_includ
 from typing import Iterator, Tuple
 from utils import (
     create_graph_from_include_analysis,
+    get_include_analysis_edge_prevalence,
     get_latest_include_analysis,
 )
 
@@ -20,17 +21,43 @@ def minimum_edge_cut(
     include_analysis: IncludeAnalysisOutput,
     source: str,
     target: str,
+    start_from_source_includes=False,
+    prevalence_threshold: float = None,
 ) -> Iterator[Tuple[str, str]]:
     files = include_analysis["files"]
     DG: nx.DiGraph = create_graph_from_include_analysis(include_analysis)
 
-    edge_cut = nx.minimum_edge_cut(DG, files.index(source), files.index(target))
+    edge_prevalence = get_include_analysis_edge_prevalence(include_analysis)
 
-    for includer_idx, include_idx in edge_cut:
-        includer = files[includer_idx]
-        included = files[include_idx]
+    sources = include_analysis["includes"][source] if start_from_source_includes else [source]
+    cuts = []
 
-        yield includer, included
+    for source in sources:
+        edge_cut = nx.minimum_edge_cut(DG, files.index(source), files.index(target))
+
+        for includer_idx, include_idx in edge_cut:
+            includer = files[includer_idx]
+            included = files[include_idx]
+
+            if start_from_source_includes:
+                cuts.append((includer, included))
+            else:
+                prevalence = edge_prevalence[includer][included]
+
+                if prevalence_threshold and prevalence < prevalence_threshold:
+                    continue
+
+                yield includer, included, prevalence
+
+    if start_from_source_includes:
+        # Deduplicate cuts
+        for includer, included in set(cuts):
+            prevalence = edge_prevalence[includer][included]
+
+            if prevalence_threshold and prevalence < prevalence_threshold:
+                continue
+
+            yield includer, included, prevalence
 
 
 def main():
@@ -43,6 +70,14 @@ def main():
     )
     parser.add_argument("source", help="Source file.")
     parser.add_argument("target", help="Target file.")
+    parser.add_argument(
+        "--start-from-source-includes",
+        action="store_true",
+        help="Start from includes of the source file, rather than the source file itself.",
+    )
+    parser.add_argument(
+        "--prevalence-threshold", type=float, help="Filter out edges with a prevalence percentage below the threshold."
+    )
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
 
@@ -79,6 +114,8 @@ def main():
             include_analysis,
             args.source,
             args.target,
+            start_from_source_includes=args.start_from_source_includes,
+            prevalence_threshold=args.prevalence_threshold,
         ):
             csv_writer.writerow(row)
 

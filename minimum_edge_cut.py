@@ -33,6 +33,11 @@ def minimum_edge_cut(
     cuts = []
 
     for source in sources:
+        # With the start_from_source_includes option, the target could be a direct include
+        if source == target:
+            logging.warning(f"{target} is a direct include of {source}")
+            continue
+
         edge_cut = nx.minimum_edge_cut(DG, files.index(source), files.index(target))
 
         for includer_idx, include_idx in edge_cut:

@@ -130,3 +130,6 @@ dmypy.json
 
 *.csv
 *.dot
+
+# Cache for LLM calls
+.llm-cache

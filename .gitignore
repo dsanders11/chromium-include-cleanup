@@ -132,3 +132,6 @@ dmypy.json
 *.dot
 
 .cached-include-analysis
+
+# Cache for LLM calls
+.llm-cache

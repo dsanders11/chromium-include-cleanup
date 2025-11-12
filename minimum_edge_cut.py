@@ -8,13 +8,9 @@ import sys
 
 import networkx as nx
 
-from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
+from include_analysis import IncludeAnalysisOutput, ParseError, load_include_analysis
 from typing import Iterator, Tuple
-from utils import (
-    create_graph_from_include_analysis,
-    get_include_analysis_edge_prevalence,
-    get_latest_include_analysis,
-)
+from utils import create_graph_from_include_analysis, get_include_analysis_edge_prevalence
 
 
 def minimum_edge_cut(
@@ -69,9 +65,9 @@ def main():
     parser = argparse.ArgumentParser(description="Find the minimum edge cut between two files")
     parser.add_argument(
         "include_analysis_output",
-        type=argparse.FileType("r"),
+        type=str,
         nargs="?",
-        help="The include analysis output to use.",
+        help="The include analysis output to use (can be a file path or URL). If not specified, pulls the latest.",
     )
     parser.add_argument("source", help="Source file.")
     parser.add_argument("target", help="Target file.")
@@ -86,14 +82,8 @@ def main():
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
 
-    # If the user specified an include analysis output file, use that instead of fetching it
-    if args.include_analysis_output:
-        raw_include_analysis = args.include_analysis_output.read()
-    else:
-        raw_include_analysis = get_latest_include_analysis()
-
     try:
-        include_analysis = parse_raw_include_analysis_output(raw_include_analysis)
+        include_analysis = load_include_analysis(args.include_analysis_output)
     except ParseError as e:
         message = str(e)
         print("error: Could not parse include analysis output file")

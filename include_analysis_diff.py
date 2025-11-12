@@ -10,9 +10,13 @@ import urllib.request
 from datetime import datetime
 
 from extract_archived_include_analysis import extract_include_analysis
-from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
+from include_analysis import (
+    IncludeAnalysisOutput,
+    ParseError,
+    load_include_analysis,
+    parse_raw_include_analysis_output,
+)
 from suggest_include_changes import filter_filenames
-from utils import get_latest_include_analysis
 
 CHROMIUM_INCLUDE_ANALYSIS_BASE_URL = "https://commondatastorage.googleapis.com/chromium-browser-clang"
 HREF_REGEX = re.compile(r"<a href=\"(.*?)\">", re.DOTALL)
@@ -220,13 +224,13 @@ def main():
     )
     parser.add_argument(
         "include_analysis_output",
-        type=argparse.FileType("r"),
+        type=str,
         nargs="?",
         help="The include analysis output to use.",
     )
     parser.add_argument(
         "previous_include_analysis_output",
-        type=argparse.FileType("r"),
+        type=str,
         nargs="?",
         help="The previous include analysis output to use. If provided, the diff will only be between these two files.",
     )
@@ -264,14 +268,8 @@ def main():
         level=logging.DEBUG if args.verbose else logging.WARNING if args.quiet else logging.INFO,
     )
 
-    # If the user specified an include analysis output file, use that instead of fetching it
-    if args.include_analysis_output:
-        raw_include_analysis = args.include_analysis_output.read()
-    else:
-        raw_include_analysis = get_latest_include_analysis()
-
     try:
-        include_analysis = parse_raw_include_analysis_output(raw_include_analysis)
+        include_analysis = load_include_analysis(args.include_analysis_output)
     except ParseError as e:
         message = str(e)
         print("error: Could not parse include analysis output file")
@@ -280,10 +278,8 @@ def main():
         return 2
 
     if args.previous_include_analysis_output:
-        raw_previous_include_analysis = args.previous_include_analysis_output.read()
-
         try:
-            previous_include_analysis = parse_raw_include_analysis_output(raw_previous_include_analysis)
+            previous_include_analysis = load_include_analysis(args.previous_include_analysis_output)
         except ParseError as e:
             message = str(e)
             print("error: Could not parse include analysis output file")

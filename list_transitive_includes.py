@@ -9,7 +9,7 @@ from collections import defaultdict
 
 from common import FilteredIncludeChangeList, IgnoresConfiguration, IncludeChange
 from filter_include_changes import Change, filter_changes
-from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
+from include_analysis import IncludeAnalysisOutput, ParseError, load_include_analysis
 from typing import Dict, Iterator, List, Tuple
 from utils import (
     get_include_analysis_edges_centrality,
@@ -19,7 +19,6 @@ from utils import (
     get_include_analysis_edge_prevalence,
     get_include_analysis_edge_sizes,
     get_include_file_size,
-    get_latest_include_analysis,
     load_config,
     normalize_include_path,
 )
@@ -141,7 +140,7 @@ def main():
     parser = argparse.ArgumentParser(description="List transitive (and direct) includes of a file")
     parser.add_argument(
         "include_analysis_output",
-        type=argparse.FileType("r"),
+        type=str,
         nargs="?",
         help="The include analysis output to use.",
     )
@@ -179,14 +178,8 @@ def main():
         print("error: --apply-changes option requires --include-changes")
         return 1
 
-    # If the user specified an include analysis output file, use that instead of fetching it
-    if args.include_analysis_output:
-        raw_include_analysis = args.include_analysis_output.read()
-    else:
-        raw_include_analysis = get_latest_include_analysis()
-
     try:
-        include_analysis = parse_raw_include_analysis_output(raw_include_analysis)
+        include_analysis = load_include_analysis(args.include_analysis_output)
     except ParseError as e:
         message = str(e)
         print("error: Could not parse include analysis output file")

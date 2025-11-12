@@ -8,7 +8,7 @@ import sys
 
 from common import IgnoresConfiguration, IncludeChange
 from filter_include_changes import Change, filter_changes
-from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
+from include_analysis import IncludeAnalysisOutput, ParseError, load_include_analysis
 from list_includers import list_includers
 from list_transitive_includes import list_transitive_includes
 from typing import Dict, Iterator, List, Set, Tuple
@@ -97,7 +97,7 @@ def main():
     )
     parser.add_argument(
         "include_analysis_output",
-        type=argparse.FileType("r"),
+        type=str,
         help="The include analysis output to use.",
     )
     parser.add_argument("filename", help="File that has the include to be removed.")
@@ -111,7 +111,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        include_analysis = parse_raw_include_analysis_output(args.include_analysis_output.read())
+        include_analysis = load_include_analysis(args.include_analysis_output)
     except ParseError as e:
         message = str(e)
         print("error: Could not parse include analysis output file")

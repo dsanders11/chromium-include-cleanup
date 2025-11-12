@@ -3,20 +3,10 @@
 import argparse
 import logging
 import os
-import re
 import sys
 import urllib.request
 
-DATA_REGEX = re.compile(r".*<script>\n?(data = .*?)<\/script>", re.DOTALL)
-
-
-def extract_include_analysis(contents: str) -> str:
-    data_match = DATA_REGEX.match(contents)
-
-    if data_match:
-        return data_match.group(1).strip()
-
-    return ""
+from utils import extract_include_analysis
 
 
 def main():

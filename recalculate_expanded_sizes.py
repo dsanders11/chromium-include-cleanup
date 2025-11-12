@@ -11,10 +11,10 @@ import sys
 import time
 from itertools import batched
 
-from common import FilteredIncludeChangeList, IgnoresConfiguration, IncludeChange
+from common import FilteredIncludeChangeList, IgnoresConfiguration
 from filter_include_changes import Change, filter_changes
 from list_transitive_includes import list_transitive_includes
-from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
+from include_analysis import IncludeAnalysisOutput, ParseError, load_include_analysis
 from typing import Callable, Dict, Iterator, List, Tuple
 from utils import get_worker_count, load_config
 
@@ -180,7 +180,7 @@ def main():
     )
     parser.add_argument(
         "include_analysis_output",
-        type=argparse.FileType("r"),
+        type=str,
         help="The include analysis output to use.",
     )
     parser.add_argument(
@@ -198,7 +198,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        include_analysis = parse_raw_include_analysis_output(args.include_analysis_output.read())
+        include_analysis = load_include_analysis(args.include_analysis_output)
     except ParseError as e:
         message = str(e)
         print("error: Could not parse include analysis output file")

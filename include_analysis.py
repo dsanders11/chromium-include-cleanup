@@ -1,7 +1,10 @@
 import json
 import re
+import sys
+import urllib.request
 from typing import Dict, List, Optional, TypedDict
 
+DATA_REGEX = re.compile(r".*<script>\n?(data = .*?)<\/script>", re.DOTALL)
 GENERATED_FILE_PREFIX_REGEX = re.compile(r"^(out/[\w-]+/gen/).*$")
 SYSROOT_REGEX = re.compile(r"^(build/linux/[\w-]+/)usr/include/([\w-]+)/sys/.*$")
 
@@ -124,3 +127,41 @@ def parse_raw_include_analysis_output(output: str) -> Optional[IncludeAnalysisOu
     parsed_output["sysroot_platform"] = sysroot_platform
 
     return parsed_output
+
+
+def get_latest_include_analysis():
+    response = urllib.request.urlopen(
+        "https://commondatastorage.googleapis.com/chromium-browser-clang/include-analysis.js"
+    )
+
+    return response.read().decode("utf8")
+
+
+def extract_include_analysis(contents: str) -> str:
+    data_match = DATA_REGEX.match(contents)
+
+    if data_match:
+        return data_match.group(1).strip()
+
+    return ""
+
+
+def load_include_analysis(include_analysis_path: Optional[str]) -> IncludeAnalysisOutput:
+    # If the user specified an include analysis output file, use that instead of fetching it
+    if include_analysis_path:
+        if include_analysis_path.startswith("https://"):
+            include_analysis_response = urllib.request.urlopen(include_analysis_path)
+            include_analysis_contents = include_analysis_response.read().decode("utf8")
+            raw_include_analysis = extract_include_analysis(include_analysis_contents)
+
+            if not raw_include_analysis:
+                raise RuntimeError(f"Could not extract include analysis from {include_analysis_path}")
+        elif include_analysis_path == "-":
+            raw_include_analysis = sys.stdin.read()
+        else:
+            with open(include_analysis_path, "r") as f:
+                raw_include_analysis = f.read()
+    else:
+        raw_include_analysis = get_latest_include_analysis()
+
+    return parse_raw_include_analysis_output(raw_include_analysis)

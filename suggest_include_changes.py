@@ -12,7 +12,7 @@ from typing import AsyncIterator, Callable, List, Optional, Tuple
 from clangd_lsp import ClangdClient, ClangdCrashed
 from common import IncludeChange
 from filter_include_changes import GENERATED_FILE_REGEX, MOJOM_HEADER_REGEX, THIRD_PARTY_REGEX
-from include_analysis import ParseError, parse_raw_include_analysis_output
+from include_analysis import ParseError, load_include_analysis
 from utils import get_worker_count
 
 
@@ -120,7 +120,7 @@ async def main():
     )
     parser.add_argument(
         "include_analysis_output",
-        type=argparse.FileType("r"),
+        type=str,
         help="The include analysis output to use (- for stdin).",
     )
     parser.add_argument(
@@ -162,7 +162,7 @@ async def main():
         return 1
 
     try:
-        include_analysis = parse_raw_include_analysis_output(args.include_analysis_output.read())
+        include_analysis = load_include_analysis(args.include_analysis_output)
     except ParseError as e:
         message = str(e)
         print("error: Could not parse include analysis output file")

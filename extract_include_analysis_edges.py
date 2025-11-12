@@ -6,16 +6,14 @@ import logging
 import os
 import re
 import sys
-import urllib.request
 from datetime import datetime
 
-from include_analysis import IncludeAnalysisOutput, ParseError, parse_raw_include_analysis_output
+from include_analysis import IncludeAnalysisOutput, ParseError, load_include_analysis
 from suggest_include_changes import filter_filenames
 from utils import (
     get_include_analysis_edge_expanded_sizes,
     get_include_analysis_edge_prevalence,
     get_include_analysis_edges_centrality,
-    get_latest_include_analysis,
 )
 
 
@@ -65,7 +63,7 @@ def main():
     parser = argparse.ArgumentParser(description="Extract include edges from include analysis, with filtering")
     parser.add_argument(
         "include_analysis_output",
-        type=argparse.FileType("r"),
+        type=str,
         nargs="?",
         help="The include analysis output to use.",
     )
@@ -93,14 +91,8 @@ def main():
         level=logging.DEBUG if args.verbose else logging.WARNING if args.quiet else logging.INFO,
     )
 
-    # If the user specified an include analysis output file, use that instead of fetching it
-    if args.include_analysis_output:
-        raw_include_analysis = args.include_analysis_output.read()
-    else:
-        raw_include_analysis = get_latest_include_analysis()
-
     try:
-        include_analysis = parse_raw_include_analysis_output(raw_include_analysis)
+        include_analysis = load_include_analysis(args.include_analysis_output)
     except ParseError as e:
         message = str(e)
         print("error: Could not parse include analysis output file")

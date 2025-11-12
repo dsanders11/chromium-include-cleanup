@@ -3,7 +3,6 @@ import logging
 import multiprocessing
 import os
 import pathlib
-import urllib.request
 from collections import defaultdict
 from typing import DefaultDict, Dict, List
 
@@ -297,11 +296,3 @@ def normalize_include_path(
         _normalized_include_paths[include] = normalized
 
     return _normalized_include_paths[include]
-
-
-def get_latest_include_analysis():
-    response = urllib.request.urlopen(
-        "https://commondatastorage.googleapis.com/chromium-browser-clang/include-analysis.js"
-    )
-
-    return response.read().decode("utf8")

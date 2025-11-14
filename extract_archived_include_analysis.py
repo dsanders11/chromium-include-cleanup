@@ -6,7 +6,7 @@ import os
 import sys
 import urllib.request
 
-from utils import extract_include_analysis
+from include_analysis import extract_include_analysis
 
 
 def main():

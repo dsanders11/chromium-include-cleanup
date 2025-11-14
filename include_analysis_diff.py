@@ -9,10 +9,10 @@ import sys
 import urllib.request
 from datetime import datetime
 
-from extract_archived_include_analysis import extract_include_analysis
 from include_analysis import (
     IncludeAnalysisOutput,
     ParseError,
+    extract_include_analysis,
     load_include_analysis,
     parse_raw_include_analysis_output,
 )

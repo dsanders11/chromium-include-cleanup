@@ -130,3 +130,5 @@ dmypy.json
 
 *.csv
 *.dot
+
+.cached-include-analysis

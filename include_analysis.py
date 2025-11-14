@@ -2,6 +2,7 @@ import json
 import re
 import sys
 import urllib.request
+from pathlib import Path
 from typing import Dict, List, Optional, TypedDict
 
 DATA_REGEX = re.compile(r".*<script>\n?(data = .*?)<\/script>", re.DOTALL)
@@ -130,11 +131,41 @@ def parse_raw_include_analysis_output(output: str) -> Optional[IncludeAnalysisOu
 
 
 def get_latest_include_analysis():
-    response = urllib.request.urlopen(
-        "https://commondatastorage.googleapis.com/chromium-browser-clang/include-analysis.js"
-    )
+    cached_file_path = Path(__file__).resolve().parent.joinpath(".cached-include-analysis")
+    url = "https://commondatastorage.googleapis.com/chromium-browser-clang/include-analysis.js"
 
-    return response.read().decode("utf8")
+    etag = None
+    raw_include_analysis = None
+
+    if cached_file_path.exists():
+        with open(cached_file_path, "r") as f:
+            [etag, raw_include_analysis] = f.read().split("\n", 1)
+
+    try:
+        # Make request with ETag if available
+        request = urllib.request.Request(url)
+        if etag:
+            request.add_header("If-None-Match", etag)
+
+        response = urllib.request.urlopen(request)
+
+        # If we get here, there's new content (200 OK)
+        raw_include_analysis = response.read().decode("utf8")
+
+        # Save the new content with ETag on first line
+        new_etag = response.headers.get("ETag", "")
+        with open(cached_file_path, "w") as f:
+            f.write(f"{new_etag}\n{raw_include_analysis}")
+    except urllib.error.HTTPError as e:
+        # If not "304 Not Modified", fall back to cache if available, else raise the error
+        if e.code != 304 and not raw_include_analysis:
+            raise
+    except urllib.error.URLError:
+        # If there's a network error, fall back to cache if available, else raise the error
+        if not raw_include_analysis:
+            raise
+
+    return raw_include_analysis
 
 
 def extract_include_analysis(contents: str) -> str:

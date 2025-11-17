@@ -147,7 +147,7 @@ def create_graph_from_include_analysis(include_analysis: IncludeAnalysisOutput):
         DG.add_node(idx, filename=filename)
 
         for include in include_analysis["includes"][filename]:
-            DG.add_edge(idx, file_idx_lookup[include])
+            DG.add_edge(idx, file_idx_lookup[include], capacity=1)
 
     return DG
 

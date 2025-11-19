@@ -85,9 +85,9 @@ def minimum_edge_cut_with_auto_fwd_decl(
     full_cut_successful = True
 
     for source in sources:
-        # With the start_from_source_includes option, the target could be a direct include
+        # With the start_from_source_includes option, the included could be a direct include
         if source == included:
-            logging.warning(f"{target} is a direct include of {source}")
+            logging.warning(f"{included} is a direct include of {source}")
             continue
 
         edge_cut = nx.minimum_edge_cut(DG, files.index(source), files.index(included))

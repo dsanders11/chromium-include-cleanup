@@ -242,8 +242,8 @@ def main():
                 csv_writer.writerow(row)
 
             sys.stdout.flush()
-    except nx.exception.NetworkXNoPath:
-        print(f"error: no transitive include path from {args.filename} to {args.header}")
+    except nx.NetworkXNoPath:
+        print(f"error: no transitive include path from {args.source} to {args.target}")
         return 3
     except HTTPError as e:
         print(f"error: HTTP error {e.code} fetching file content for {e.url}")

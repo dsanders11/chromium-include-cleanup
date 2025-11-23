@@ -124,7 +124,7 @@ jobs:
           curl https://commondatastorage.googleapis.com/chromium-browser-clang/include-analysis.js > include-analysis.js
       - name: Find Prevalent Files
         run: |
-          python extract_include_analysis_metrics.py --filter-generated-files --filter-third-party --metric prevalence --weight-threshold 10 > prevalent-files.csv
+          python extract_include_analysis_metrics.py --filter-generated-files --filter-third-party --filter-mojom-headers --metric prevalence --weight-threshold 10 > prevalent-files.csv
       - run: npm install @actions/cache
       - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:

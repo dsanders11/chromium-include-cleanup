@@ -1,4 +1,4 @@
-name: Heavy Chromium Includes
+name: Heavy Chromium Files/Includes
 
 on:
   workflow_dispatch:
@@ -27,7 +27,7 @@ jobs:
           curl https://commondatastorage.googleapis.com/chromium-browser-clang/include-analysis.js > include-analysis.js
       - name: Find Heavy Include edges
         run: |
-          python extract_include_analysis_edges.py --edges --filter-generated-files --filter-third-party --weight-threshold 75000000 > heavy-includes.csv
+          python extract_include_analysis_metrics.py --edges --filter-generated-files --filter-third-party --weight-threshold 75000000 > heavy-includes.csv
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: heavy-includes
@@ -124,7 +124,7 @@ jobs:
           curl https://commondatastorage.googleapis.com/chromium-browser-clang/include-analysis.js > include-analysis.js
       - name: Find Prevalent Files
         run: |
-          python extract_include_analysis_edges.py --filter-generated-files --filter-third-party --metric prevalence --weight-threshold 10 > prevalent-files.csv
+          python extract_include_analysis_metrics.py --filter-generated-files --filter-third-party --metric prevalence --weight-threshold 10 > prevalent-files.csv
       - run: npm install @actions/cache
       - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
@@ -214,7 +214,7 @@ jobs:
           curl https://commondatastorage.googleapis.com/chromium-browser-clang/include-analysis.js > include-analysis.js
       - name: Find Prevalent Include edges
         run: |
-          python extract_include_analysis_edges.py --edges --filter-generated-files --filter-third-party --metric prevalence --weight-threshold 30 > prevalent-includes.csv
+          python extract_include_analysis_metrics.py --edges --filter-generated-files --filter-third-party --metric prevalence --weight-threshold 30 > prevalent-includes.csv
       - run: npm install @actions/cache
       - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
@@ -307,7 +307,7 @@ jobs:
           curl https://commondatastorage.googleapis.com/chromium-browser-clang/include-analysis.js > include-analysis.js
       - name: Find High Centrality Include edges
         run: |
-          python extract_include_analysis_edges.py --edges --filter-generated-files --filter-third-party --metric centrality --weight-threshold 0.04 > high-centrality-includes.csv
+          python extract_include_analysis_metrics.py --edges --filter-generated-files --filter-third-party --metric centrality --weight-threshold 0.04 > high-centrality-includes.csv
       - run: npm install @actions/cache
       - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:

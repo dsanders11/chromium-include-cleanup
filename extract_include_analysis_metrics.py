@@ -4,9 +4,7 @@ import argparse
 import csv
 import logging
 import os
-import re
 import sys
-from datetime import datetime
 
 from include_analysis import IncludeAnalysisOutput, ParseError, load_include_analysis
 from suggest_include_changes import filter_filenames
@@ -59,8 +57,43 @@ def extract_include_analysis_edges(
             yield file, include, size, prevalence, expanded_size, centrality
 
 
+def extract_include_analysis_files(
+    include_analysis: IncludeAnalysisOutput,
+    metric: str = None,
+    weight_threshold=None,
+    filter_generated_files=False,
+    filter_mojom_headers=False,
+    filter_third_party=False,
+):
+    filenames = filter_filenames(
+        include_analysis["files"],
+        filter_generated_files=filter_generated_files,
+        filter_mojom_headers=filter_mojom_headers,
+        filter_third_party=filter_third_party,
+    )
+
+    for file in filenames:
+        size = include_analysis["asizes"][file]
+        expanded_size = include_analysis["tsizes"][file]
+        prevalence = include_analysis["prevalence"][file]
+
+        if metric == "input_size":
+            weight = size
+        elif metric == "expanded_size":
+            weight = expanded_size
+        elif metric == "prevalence":
+            weight = prevalence
+        else:
+            weight = None
+
+        if weight_threshold and weight is not None and float(weight) < weight_threshold:
+            continue
+
+        yield file, size, prevalence, expanded_size
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Extract include edges from include analysis, with filtering")
+    parser = argparse.ArgumentParser(description="Extract metrics from include analysis, with filtering")
     parser.add_argument(
         "include_analysis_output",
         type=str,
@@ -71,7 +104,7 @@ def main():
         "--metric",
         choices=["centrality", "expanded_size", "input_size", "prevalence"],
         default="input_size",
-        help="Metric to use for edge weights.",
+        help="Metric to use for weights.",
     )
     parser.add_argument(
         "--weight-threshold", type=float, help="Filter out changes with a weight value below the threshold."
@@ -79,6 +112,7 @@ def main():
     parser.add_argument(
         "--filter-third-party", action="store_true", help="Filter out third_party/ (excluding blink) and v8."
     )
+    parser.add_argument("--edges", action="store_true", help="Output metrics about edges.")
     parser.add_argument("--filter-generated-files", action="store_true", help="Filter out generated files.")
     parser.add_argument("--filter-mojom-headers", action="store_true", help="Filter out mojom headers.")
     group = parser.add_mutually_exclusive_group()
@@ -103,15 +137,26 @@ def main():
     csv_writer = csv.writer(sys.stdout)
 
     try:
-        for row in extract_include_analysis_edges(
-            include_analysis,
-            metric=args.metric,
-            weight_threshold=args.weight_threshold,
-            filter_generated_files=args.filter_generated_files,
-            filter_mojom_headers=args.filter_mojom_headers,
-            filter_third_party=args.filter_third_party,
-        ):
-            csv_writer.writerow(row)
+        if args.edges:
+            for row in extract_include_analysis_edges(
+                include_analysis,
+                metric=args.metric,
+                weight_threshold=args.weight_threshold,
+                filter_generated_files=args.filter_generated_files,
+                filter_mojom_headers=args.filter_mojom_headers,
+                filter_third_party=args.filter_third_party,
+            ):
+                csv_writer.writerow(row)
+        else:
+            for row in extract_include_analysis_files(
+                include_analysis,
+                metric=args.metric,
+                weight_threshold=args.weight_threshold,
+                filter_generated_files=args.filter_generated_files,
+                filter_mojom_headers=args.filter_mojom_headers,
+                filter_third_party=args.filter_third_party,
+            ):
+                csv_writer.writerow(row)
 
         sys.stdout.flush()
     except BrokenPipeError:

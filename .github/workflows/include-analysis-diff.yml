@@ -25,7 +25,7 @@ jobs:
         with:
           script: |
             const fs = require('node:fs');
-            const cache = require('@actions/cache');
+            const cache = await import('${{ github.workspace }}/node_modules/@actions/cache/lib/cache.js');
 
             let rawIncludeAnalysis = fs.readFileSync('./include-analysis.js', 'utf8').trim();
             rawIncludeAnalysis = /data = ({.*})/.exec(rawIncludeAnalysis)[1]

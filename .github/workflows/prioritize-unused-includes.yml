@@ -51,7 +51,7 @@ jobs:
         with:
           script: |
             const fs = require('node:fs');
-            const cache = require('@actions/cache');
+            const cache = await import('${{ github.workspace }}/node_modules/@actions/cache/lib/cache.js');
 
             const data = fs.readFileSync('./priority-unused-includes.csv', 'utf8').trim().split('\n');
             const expandedSizeData = fs.readFileSync('./priority-unused-includes.expanded_size.csv', 'utf8').trim().split('\n');
@@ -167,7 +167,7 @@ jobs:
         with:
           script: |
             const fs = require('node:fs');
-            const cache = require('@actions/cache');
+            const cache = await import('${{ github.workspace }}/node_modules/@actions/cache/lib/cache.js');
 
             const addedSizeData = fs.readFileSync('./priority-unused-includes.input_size.csv', 'utf8').trim().split('\n');
             const expandedSizeData = fs.readFileSync('./priority-unused-includes.expanded_size.csv', 'utf8').trim().split('\n');
@@ -280,7 +280,7 @@ jobs:
         with:
           script: |
             const fs = require('node:fs');
-            const cache = require('@actions/cache');
+            const cache = await import('${{ github.workspace }}/node_modules/@actions/cache/lib/cache.js');
 
             const addedSizeData = fs.readFileSync('./priority-unused-includes.input_size.csv', 'utf8').trim().split('\n');
             const expandedSizeData = fs.readFileSync('./priority-unused-includes.expanded_size.csv', 'utf8').trim().split('\n');

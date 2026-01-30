@@ -37,7 +37,7 @@ jobs:
         with:
           script: |
             const fs = require('node:fs');
-            const cache = require('@actions/cache');
+            const cache = await import('${{ github.workspace }}/node_modules/@actions/cache/lib/cache.js');
 
             const data = fs.readFileSync('./heavy-includes.csv', 'utf8').trim();
 
@@ -130,7 +130,7 @@ jobs:
         with:
           script: |
             const fs = require('node:fs');
-            const cache = require('@actions/cache');
+            const cache = await import('${{ github.workspace }}/node_modules/@actions/cache/lib/cache.js');
 
             const data = fs.readFileSync('./prevalent-files.csv', 'utf8').trim();
 
@@ -220,7 +220,7 @@ jobs:
         with:
           script: |
             const fs = require('node:fs');
-            const cache = require('@actions/cache');
+            const cache = await import('${{ github.workspace }}/node_modules/@actions/cache/lib/cache.js');
 
             const data = fs.readFileSync('./prevalent-includes.csv', 'utf8').trim();
 
@@ -313,7 +313,7 @@ jobs:
         with:
           script: |
             const fs = require('node:fs');
-            const cache = require('@actions/cache');
+            const cache = await import('${{ github.workspace }}/node_modules/@actions/cache/lib/cache.js');
 
             const data = fs.readFileSync('./high-centrality-includes.csv', 'utf8').trim();
 

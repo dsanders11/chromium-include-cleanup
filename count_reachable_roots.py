@@ -9,7 +9,7 @@ import sys
 import networkx as nx
 
 from include_analysis import IncludeAnalysisOutput, ParseError, load_include_analysis
-from typing import Optional, Tuple
+from typing import Optional, Set, Tuple
 from utils import create_graph_from_include_analysis
 
 
@@ -26,6 +26,8 @@ def create_include_graph(
 
             if DG.has_edge(includer_idx, included_idx):
                 DG.remove_edge(includer_idx, included_idx)
+            else:
+                logging.warning(f"Skip edge {includer} -> {included} not found in include graph")
 
     return DG
 
@@ -56,7 +58,7 @@ def main():
         help="The include analysis output to use (can be a file path or URL). If not specified, pulls the latest.",
     )
     parser.add_argument("target", help="Target file.")
-    parser.add_argument("--skips", help="Edges to remove from the graph.")
+    parser.add_argument("--skips", action="append", default=[], help="Edges to remove from the graph.")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
 
@@ -77,13 +79,15 @@ def main():
             print(f"error: {target} is not a known file")
             return 1
 
-    skips: Tuple[Tuple[str, str]] = []
+    skips: Set[Tuple[str, str]] = set()
 
-    if args.skips:
-        with open(args.skips, "r", newline="") as f:
-            skips = [row for row in csv.reader(f) if row]
+    for skips_file in args.skips:
+        with open(skips_file, "r", newline="") as f:
+            skips.update(
+                [tuple(row) for row in csv.reader(f) if row and row[0].strip() and not row[0].startswith("#")]
+            )
 
-    DG = create_include_graph(include_analysis, skips)
+    DG = create_include_graph(include_analysis, tuple(skips))
 
     try:
         reachable_roots = count_reachable_roots(include_analysis, DG, args.target)

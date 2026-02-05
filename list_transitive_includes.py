@@ -77,7 +77,7 @@ def list_transitive_includes(
 
     def expand_includes(includer, included):
         # Normally we want to treat libc++ headers as opaque, unless the full option is true
-        if not full and includer.startswith("third_party/libc++/src/include/"):
+        if not full and "third_party/libc++/src/include/" in includer:
             return
 
         edge = (includer, included)

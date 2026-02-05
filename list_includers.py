@@ -56,7 +56,7 @@ def list_includers(
             unused_edges.add((includer, included))
 
     def expand_includer(includer, included):
-        if includer.startswith("third_party/libc++/src/include/"):
+        if "third_party/libc++/src/include/" in includer:
             return
 
         if (includer, included) in edges:

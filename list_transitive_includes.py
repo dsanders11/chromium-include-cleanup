@@ -171,6 +171,9 @@ def main():
     parser.add_argument(
         "--full", action="store_true", help="List all transitive includes, even those inside system headers."
     )
+    parser.add_argument(
+        "--files", action="store_true", help="List reachable files rather than edges, with the file size."
+    )
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
 
@@ -205,6 +208,9 @@ def main():
         print(f"error: {args.filename} is not a known file")
         return 1
 
+    if args.files:
+        seen_files = set()
+
     try:
         for row in list_transitive_includes(
             include_analysis,
@@ -220,7 +226,13 @@ def main():
             apply_changes=args.apply_changes,
             full=args.full,
         ):
-            csv_writer.writerow(row)
+            if args.files:
+                file = row[1]
+                if file not in seen_files:
+                    seen_files.add(file)
+                    csv_writer.writerow((file, include_analysis["tsizes"][file], include_analysis["sizes"][file]))
+            else:
+                csv_writer.writerow(row)
 
         sys.stdout.flush()
     except BrokenPipeError:

@@ -140,11 +140,12 @@ def create_graph_from_include_analysis(include_analysis: IncludeAnalysisOutput):
     DG = nx.DiGraph()
 
     files = include_analysis["files"]
+    sizes = include_analysis["sizes"]
     file_idx_lookup = {filename: idx for idx, filename in enumerate(files)}
 
     # Add nodes and edges to the graph
     for idx, filename in enumerate(files):
-        DG.add_node(idx, filename=filename)
+        DG.add_node(idx, filename=filename, filesize=sizes.get(filename, 0))
 
         for include in include_analysis["includes"][filename]:
             DG.add_edge(idx, file_idx_lookup[include], capacity=1)

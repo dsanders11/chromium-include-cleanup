@@ -84,6 +84,7 @@ def main():
     parser.add_argument(
         "include_analysis_output",
         type=str,
+        nargs="?",
         help="The include analysis output to use.",
     )
     parser.add_argument(

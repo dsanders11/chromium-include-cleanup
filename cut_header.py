@@ -506,10 +506,24 @@ def main():
 
     all_cuts_floor_prevalence = 100.0 * all_cuts_floor / total_roots
 
+    # Root direct includes floor: count of roots that directly include the target
+    roots_set = set(include_analysis["roots"])
+    root_direct_includes_floor = sum(
+        1 for includer in include_analysis["included_by"].get(args.target, []) if includer in roots_set
+    )
+
+    if original_reachable == 0:
+        root_direct_includes_floor_pct = 0.0
+    else:
+        root_direct_includes_floor_pct = 100.0 * root_direct_includes_floor / original_reachable
+
+    root_direct_includes_floor_prevalence = 100.0 * root_direct_includes_floor / total_roots
+
     original_prevalence = 100.0 * original_reachable / total_roots
     remaining_delta = remaining_prevalence - original_prevalence
     direct_floor_delta = direct_floor_prevalence - original_prevalence
     all_cuts_floor_delta = all_cuts_floor_prevalence - original_prevalence
+    root_direct_includes_floor_delta = root_direct_includes_floor_prevalence - original_prevalence
 
     # Output to stderr
     if remaining_delta:
@@ -525,6 +539,10 @@ def main():
     )
     print(
         f"All cuts floor: {all_cuts_floor_pct:.2f}% ({all_cuts_floor_prevalence:.2f}% prevalence, {all_cuts_floor_delta:+.2f}%%)",
+        file=sys.stderr,
+    )
+    print(
+        f"Root direct includes floor: {root_direct_includes_floor_pct:.2f}% ({root_direct_includes_floor_prevalence:.2f}% prevalence, {root_direct_includes_floor_delta:+.2f}%%)",
         file=sys.stderr,
     )
 

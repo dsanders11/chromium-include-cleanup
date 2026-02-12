@@ -181,7 +181,6 @@ def compute_top_indirect_cuts(
     DG: nx.DiGraph,
     target: str,
     edge_dominations: dict,
-    top_n: int = 5,
 ) -> List[Tuple[str, str, float]]:
     """Compute the top indirect cuts ranked by prevalence of the includer file.
 
@@ -273,9 +272,7 @@ def compute_top_indirect_cuts(
         dominated_edges = edge_dominations[(includer_file, included_file)]
         indirect_cuts.append((includer_file, included_file, includer_prevalence, dominated_edges))
 
-    # Sort by prevalence (descending) and take top N
-    indirect_cuts.sort(key=lambda x: x[2], reverse=True)
-    return indirect_cuts[:top_n]
+    return indirect_cuts
 
 
 # From analyze_includes.py in Chromium
@@ -438,6 +435,12 @@ def main():
     parser.add_argument("--skips", action="append", default=[], help="Edges to skip when determining cuts.")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     parser.add_argument("--top", type=int, default=5, help="Number of top cuts to display (default: 5).")
+    parser.add_argument(
+        "--sort-by",
+        choices=["prevalence", "dominated"],
+        default="prevalence",
+        help="Sort results by prevalence (default) or dominated edges count.",
+    )
     args = parser.parse_args()
 
     try:
@@ -564,19 +567,22 @@ def main():
             (includer_file, args.target, includer_prevalence, edge_dominations[(includer_file, args.target)])
         )
 
-    # Sort by prevalence (descending) and take top N
-    direct_includers.sort(key=lambda x: x[2], reverse=True)
+    # Sort and take top N
+    sort_key = (lambda x: x[3]) if args.sort_by == "dominated" else (lambda x: x[2])
+    direct_includers.sort(key=sort_key, reverse=True)
     top_direct = direct_includers[: args.top]
 
-    print(f"\nTop {args.top} direct includers (by overall prevalence)")
+    print(f"\nTop {args.top} direct includers (by {args.sort_by})")
     writer = csv.writer(sys.stdout)
     for includer_file, included_file, prevalence, dominated_edges in top_direct:
         writer.writerow([includer_file, included_file, f"{prevalence:.2f}", dominated_edges])
 
-    # Compute top N indirect cuts ranked by prevalence of the includer file
-    top_indirect = compute_top_indirect_cuts(include_analysis, DG, args.target, edge_dominations, top_n=args.top)
+    # Compute top N indirect cuts
+    all_indirect = compute_top_indirect_cuts(include_analysis, DG, args.target, edge_dominations)
+    all_indirect.sort(key=sort_key, reverse=True)
+    top_indirect = all_indirect[: args.top]
 
-    print(f"\nTop {args.top} indirect cuts (by overall prevalence)")
+    print(f"\nTop {args.top} indirect cuts (by {args.sort_by})")
     for includer_file, included_file, prevalence, dominated_edges in top_indirect:
         writer.writerow([includer_file, included_file, f"{prevalence:.2f}", dominated_edges])
 

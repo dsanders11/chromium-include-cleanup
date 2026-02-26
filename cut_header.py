@@ -996,8 +996,13 @@ def main():
         type=str,
         help="The include analysis output to use (can be a file path or URL). If not specified, pulls the latest.",
     )
-    parser.add_argument("--ignores", action="append", default=[], help="Edges to ignore when determining cuts.")
-    parser.add_argument("--skips", action="append", default=[], help="Edges to skip when determining cuts.")
+    ignores_group = parser.add_mutually_exclusive_group()
+    ignores_group.add_argument("--ignores", action="append", default=[], help="Edges to ignore when determining cuts.")
+    ignores_group.add_argument("--ignores-file", type=str, help="File containing edges to ignore (one per line).")
+
+    skips_group = parser.add_mutually_exclusive_group()
+    skips_group.add_argument("--skips", action="append", default=[], help="Edges to skip when determining cuts.")
+    skips_group.add_argument("--skips-file", type=str, help="File containing edges to skip (one per line).")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     parser.add_argument("--top", type=int, default=5, help="Number of top cuts to display (default: 5).")
     parser.add_argument(
@@ -1008,6 +1013,14 @@ def main():
     )
     parser.add_argument("--interactive", action="store_true", default=False, help="Run in interactive mode.")
     args = parser.parse_args()
+
+    if args.ignores_file:
+        with open(args.ignores_file) as f:
+            args.ignores = [line.strip() for line in f if line.strip()]
+
+    if args.skips_file:
+        with open(args.skips_file) as f:
+            args.skips = [line.strip() for line in f if line.strip()]
 
     try:
         include_analysis = load_include_analysis(args.include_analysis)
@@ -1023,21 +1036,21 @@ def main():
 
     if args.interactive:
         if len(args.ignores) == 0:
-            print("error: interactive mode requires at least one --ignores file")
+            print("error: interactive mode requires at least one ignores file")
             return 1
 
         if len(args.skips) == 0:
-            print("error: interactive mode requires at least one --skips file")
+            print("error: interactive mode requires at least one skips file")
             return 1
 
         gh_token = os.environ.get("GH_TOKEN")
 
         if is_gist_url(args.ignores[0]) and not gh_token:
-            print("error: the first --ignores is a gist URL but GH_TOKEN environment variable is not set")
+            print("error: the first ignores is a gist URL but GH_TOKEN environment variable is not set")
             return 1
 
         if is_gist_url(args.skips[0]) and not gh_token:
-            print("error: the first --skips is a gist URL but GH_TOKEN environment variable is not set")
+            print("error: the first skips is a gist URL but GH_TOKEN environment variable is not set")
             return 1
 
     if not args.target:

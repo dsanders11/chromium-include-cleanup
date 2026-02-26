@@ -4,7 +4,9 @@ import argparse
 import csv
 import curses
 import io
+import json
 import logging
+import os
 import platform
 import re
 import subprocess
@@ -551,6 +553,59 @@ def gist_to_raw_url(url: str) -> str:
     return url
 
 
+def extract_gist_id(url: str) -> Optional[str]:
+    """Extract the gist ID from a GitHub gist URL."""
+    match = re.match(r"https?://gist\.github(?:usercontent)?\.com/[^/]+/([a-f0-9]+)", url)
+    if match:
+        return match.group(1)
+    return None
+
+
+def update_gist_file(gist_url: str, new_content: str, gh_token: str):
+    """Update a gist file via the GitHub API."""
+    gist_id = extract_gist_id(gist_url)
+    if not gist_id:
+        raise ValueError(f"Could not extract gist ID from URL: {gist_url}")
+
+    # GET the gist to find the filename
+    req = urllib.request.Request(
+        f"https://api.github.com/gists/{gist_id}",
+        headers={
+            "Authorization": f"Bearer {gh_token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+    )
+    with urllib.request.urlopen(req) as response:
+        gist_data = json.loads(response.read().decode("utf-8"))
+
+    filename = next(iter(gist_data["files"]))
+
+    # PATCH the gist with updated content
+    patch_data = json.dumps(
+        {
+            "files": {
+                filename: {
+                    "content": new_content,
+                }
+            }
+        }
+    ).encode("utf-8")
+
+    req = urllib.request.Request(
+        f"https://api.github.com/gists/{gist_id}",
+        data=patch_data,
+        headers={
+            "Authorization": f"Bearer {gh_token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Content-Type": "application/json",
+        },
+        method="PATCH",
+    )
+    urllib.request.urlopen(req)
+
+
 def load_edges_from_file(filepath: str) -> Set[Tuple[str, str]]:
     edges: Set[Tuple[str, str]] = set()
 
@@ -574,6 +629,7 @@ def run_interactive(
     skips_files: List[str],
     top_n: int,
     sort_by: str,
+    gh_token: Optional[str] = None,
 ):
     """Run the interactive curses-based TUI for cut_header."""
 
@@ -582,17 +638,26 @@ def run_interactive(
     skips_output_file = skips_files[0]
 
     def prepend_to_file(filepath: str, includer: str, included: str):
-        """Prepend a CSV row to the given file."""
+        """Prepend a CSV row to the given file (local or gist)."""
         new_line = f"{includer},{included}\n"
 
-        try:
-            with open(filepath, "r") as f:
-                existing = f.read()
-        except FileNotFoundError:
-            existing = ""
+        if is_gist_url(filepath) and gh_token:
+            raw_url = gist_to_raw_url(filepath)
+            try:
+                response = urllib.request.urlopen(raw_url)
+                existing = response.read().decode("utf-8")
+            except Exception:
+                existing = ""
+            update_gist_file(filepath, new_line + existing, gh_token)
+        else:
+            try:
+                with open(filepath, "r") as f:
+                    existing = f.read()
+            except FileNotFoundError:
+                existing = ""
 
-        with open(filepath, "w") as f:
-            f.write(new_line + existing)
+            with open(filepath, "w") as f:
+                f.write(new_line + existing)
 
     def compute_data(include_analysis, target, ignores, skips, top_n, sort_by):
         """Compute floors, direct cuts, and indirect cuts. Returns a dict of results."""
@@ -945,6 +1010,25 @@ def main():
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
+    if args.interactive:
+        if len(args.ignores) == 0:
+            print("error: interactive mode requires at least one --ignores file")
+            return 1
+
+        if len(args.skips) == 0:
+            print("error: interactive mode requires at least one --skips file")
+            return 1
+
+        gh_token = os.environ.get("GH_TOKEN")
+
+        if is_gist_url(args.ignores[0]) and not gh_token:
+            print("error: the first --ignores is a gist URL but GH_TOKEN environment variable is not set")
+            return 1
+
+        if is_gist_url(args.skips[0]) and not gh_token:
+            print("error: the first --skips is a gist URL but GH_TOKEN environment variable is not set")
+            return 1
+
     if not args.target:
         import atexit
         import readline
@@ -967,22 +1051,6 @@ def main():
         return 1
 
     if args.interactive:
-        if len(args.ignores) == 0:
-            print("error: interactive mode requires at least one --ignores file")
-            return 1
-
-        if len(args.skips) == 0:
-            print("error: interactive mode requires at least one --skips file")
-            return 1
-
-        if is_gist_url(args.ignores[0]):
-            print("error: the first --ignores in interactive mode must be a local file, not a gist URL")
-            return 1
-
-        if is_gist_url(args.skips[0]):
-            print("error: the first --skips in interactive mode must be a local file, not a gist URL")
-            return 1
-
         # NOTE: the first --ignores and --skips files are the ones updated
         run_interactive(
             include_analysis=include_analysis,
@@ -991,6 +1059,7 @@ def main():
             skips_files=args.skips,
             top_n=args.top,
             sort_by=args.sort_by,
+            gh_token=gh_token,
         )
         return 0
 

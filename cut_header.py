@@ -630,6 +630,7 @@ def run_interactive(
     top_n: int,
     sort_by: str,
     gh_token: Optional[str] = None,
+    nested: bool = False,
 ):
     """Run the interactive curses-based TUI for cut_header."""
 
@@ -856,7 +857,8 @@ def run_interactive(
             action_row += 1
         else:
             # Footer help
-            addstr(row, 0, "[↑/↓] Select  [Enter] Action  [c] Copy  [r] Refresh  [q] Quit", curses.A_DIM)
+            quit_hint = "[b] Back" if nested else "[q] Quit"
+            addstr(row, 0, f"[↑/↓] Select  [Enter] Action  [c] Copy  [r] Refresh  {quit_hint}", curses.A_DIM)
             row += 1
 
         # Warnings
@@ -886,6 +888,7 @@ def run_interactive(
         needs_refresh = True
         data = None
         acted_on = {}  # (includer, included) -> "ignored" | "skipped"
+        any_action_taken = False
 
         while True:
             if needs_refresh:
@@ -951,6 +954,7 @@ def run_interactive(
                     action_taken = True
 
                 if action_taken:
+                    any_action_taken = True
                     if (total_selectable - len(acted_on)) > 0:
                         while True:
                             selected_idx = (selected_idx + 1) % total_selectable
@@ -958,7 +962,7 @@ def run_interactive(
                             if (includer, included) not in acted_on:
                                 break
             else:
-                if key == ord("q"):
+                if key == ord("b" if nested else "q"):
                     break
                 elif key == ord("r"):
                     needs_refresh = True
@@ -985,7 +989,9 @@ def run_interactive(
                         action_mode = True
                         action_selected = 0
 
-    curses.wrapper(curses_main)
+        return any_action_taken
+
+    return curses.wrapper(curses_main)
 
 
 def main():

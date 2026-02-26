@@ -1,6 +1,7 @@
 import json
 import re
 import sys
+import time
 import urllib.request
 from pathlib import Path
 from typing import Dict, List, Optional, TypedDict
@@ -134,12 +135,19 @@ def get_latest_include_analysis():
     cached_file_path = Path(__file__).resolve().parent.joinpath(".cached-include-analysis")
     url = "https://commondatastorage.googleapis.com/chromium-browser-clang/include-analysis.js"
 
+    cache_max_age_seconds = 10 * 60  # 10 minutes
+
     etag = None
     raw_include_analysis = None
 
     if cached_file_path.exists():
         with open(cached_file_path, "r") as f:
             [etag, raw_include_analysis] = f.read().split("\n", 1)
+
+        # If cache is less than 10 minutes old, use it directly
+        cache_age = time.time() - cached_file_path.stat().st_mtime
+        if cache_age < cache_max_age_seconds:
+            return raw_include_analysis
 
     try:
         # Make request with ETag if available
@@ -158,7 +166,10 @@ def get_latest_include_analysis():
             f.write(f"{new_etag}\n{raw_include_analysis}")
     except urllib.error.HTTPError as e:
         # If not "304 Not Modified", fall back to cache if available, else raise the error
-        if e.code != 304 and not raw_include_analysis:
+        if e.code == 304:
+            # Content unchanged, update mtime so we don't check again for 10 minutes
+            cached_file_path.touch(exist_ok=True)
+        elif not raw_include_analysis:
             raise
     except urllib.error.URLError:
         # If there's a network error, fall back to cache if available, else raise the error

@@ -481,7 +481,9 @@ def main():
 
     for ignores_file in args.ignores:
         with open(ignores_file, "r", newline="") as f:
-            ignores.update([tuple(row) for row in csv.reader(f) if row])
+            ignores.update(
+                [tuple(row) for row in csv.reader(f) if row and row[0].strip() and not row[0].startswith("#")]
+            )
 
     for skips_file in args.skips:
         with open(skips_file, "r", newline="") as f:

@@ -857,6 +857,12 @@ def run_interactive(
         else:
             # Footer help
             addstr(row, 0, "[↑/↓] Select  [Enter] Action  [c] Copy  [r] Refresh  [q] Quit", curses.A_DIM)
+            row += 1
+
+        # Warnings
+        for warning in data.get("warnings", []):
+            row += 1
+            addstr(row, 0, warning, curses.color_pair(3) | curses.A_BOLD)
 
         stdscr.refresh()
         return selectable_lines
@@ -894,7 +900,12 @@ def run_interactive(
                 skips: Set[Tuple[str, str]] = set()
                 for f in skips_files:
                     skips.update(load_edges_from_file(f))
+                warnings = [
+                    f"warning: edge {includer} -> {included} is in both ignores and skips, it will be treated as skipped"
+                    for (includer, included) in ignores.intersection(skips)
+                ]
                 data = compute_data(include_analysis, target, ignores, skips, top_n, sort_by)
+                data["warnings"] = warnings
                 stdscr.redrawwin()
                 stdscr.refresh()
                 needs_refresh = False
@@ -1071,6 +1082,11 @@ def main():
 
     for skips_file in args.skips:
         skips.update(load_edges_from_file(skips_file))
+
+    for edge in ignores.intersection(skips):
+        logging.warning(
+            f"warning: edge {edge[0]} -> {edge[1]} is in both ignores and skips, it will be treated as skipped"
+        )
 
     total_roots = len(include_analysis["roots"])
 

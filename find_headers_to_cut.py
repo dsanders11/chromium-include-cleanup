@@ -211,7 +211,7 @@ def main():
             ]
         )
 
-    print(f"\n{len(results)} headers with all_cuts_floor_pct < {args.max_floor}%", file=sys.stderr)
+    print(f"\n{len(results)} headers with all_cuts_floor_pct < {args.max_floor}% and tsize >= {args.min_tsize}", file=sys.stderr)
 
     return 0
 

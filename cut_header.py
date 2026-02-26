@@ -181,7 +181,7 @@ def compute_top_indirect_cuts(
     DG: nx.DiGraph,
     target: str,
     edge_dominations: dict,
-) -> List[Tuple[str, str, float]]:
+) -> List[Tuple[str, str, float, int]]:
     """Compute the top indirect cuts ranked by prevalence of the includer file.
 
     Indirect cuts are edges in the minimum edge cut from all reachable roots
@@ -273,6 +273,32 @@ def compute_top_indirect_cuts(
         indirect_cuts.append((includer_file, included_file, includer_prevalence, dominated_edges))
 
     return indirect_cuts
+
+
+def compute_direct_cuts(
+    include_analysis: IncludeAnalysisOutput,
+    DG: nx.DiGraph,
+    target: str,
+    edge_dominations: dict,
+) -> List[Tuple[str, str, float, int]]:
+    files = include_analysis["files"]
+    total_roots = len(include_analysis["roots"])
+
+    target_idx = files.index(target)
+    direct_includers = []
+
+    for includer_idx, _ in DG.in_edges(target_idx):
+        # Skip ignored edges (infinite capacity)
+        if DG[includer_idx][target_idx].get("capacity", 1) == float("inf"):
+            continue
+
+        includer_file = files[includer_idx]
+        includer_prevalence = 100.0 * (include_analysis["prevalence"][includer_file] / total_roots)
+        direct_includers.append(
+            (includer_file, target, includer_prevalence, edge_dominations[(includer_file, target)])
+        )
+
+    return direct_includers
 
 
 # From analyze_includes.py in Chromium
@@ -422,6 +448,74 @@ def compute_doms_to_target(include_analysis: IncludeAnalysisOutput, DG: nx.DiGra
     return compute_added_sizes((roots, augmented_includes, sizes))
 
 
+def calculate_floors(
+    include_analysis: IncludeAnalysisOutput,
+    target: str,
+    ignores: Optional[Tuple[Tuple[str, str]]] = None,
+    skips: Optional[Tuple[Tuple[str, str]]] = None,
+):
+    total_roots = len(include_analysis["roots"])
+
+    # Remaining: reachable roots after skips are applied
+    DG = create_include_graph(include_analysis, target, ignores=ignores, skips=skips)
+    remaining_reachable = count_reachable_roots(include_analysis, DG, target)
+
+    # Get original prevalence for the target header (reachable roots without any skips)
+    DG_original = create_graph_from_include_analysis(include_analysis)
+    original_reachable = count_reachable_roots(include_analysis, DG_original, target)
+
+    if original_reachable == 0:
+        remaining_pct = 0.0
+    else:
+        remaining_pct = 100.0 * remaining_reachable / original_reachable
+
+    remaining_prevalence = 100.0 * remaining_reachable / total_roots
+
+    # Direct cuts floor
+    direct_floor = compute_direct_cuts_floor(include_analysis, DG, target)
+
+    if original_reachable == 0:
+        direct_floor_pct = 0.0
+    else:
+        direct_floor_pct = 100.0 * direct_floor / original_reachable
+
+    direct_floor_prevalence = 100.0 * direct_floor / total_roots
+
+    # All cuts floor
+    all_cuts_floor = compute_all_cuts_floor(include_analysis, DG, target)
+
+    if original_reachable == 0:
+        all_cuts_floor_pct = 0.0
+    else:
+        all_cuts_floor_pct = 100.0 * all_cuts_floor / original_reachable
+
+    all_cuts_floor_prevalence = 100.0 * all_cuts_floor / total_roots
+
+    # Root direct includes floor: count of roots that directly include the target
+    roots_set = set(include_analysis["roots"])
+    root_direct_includes_floor = sum(
+        1 for includer in include_analysis["included_by"].get(target, []) if includer in roots_set
+    )
+
+    if original_reachable == 0:
+        root_direct_includes_floor_pct = 0.0
+    else:
+        root_direct_includes_floor_pct = 100.0 * root_direct_includes_floor / original_reachable
+
+    return {
+        "all_cuts_floor_pct": all_cuts_floor_pct,
+        "all_cuts_floor_prevalence": all_cuts_floor_prevalence,
+        "DG": DG,
+        "direct_floor_pct": direct_floor_pct,
+        "direct_floor_prevalence": direct_floor_prevalence,
+        "original_reachable": original_reachable,
+        "remaining_pct": remaining_pct,
+        "remaining_prevalence": remaining_prevalence,
+        "root_direct_includes_floor": root_direct_includes_floor,
+        "root_direct_includes_floor_pct": root_direct_includes_floor_pct,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="Output information about potential cuts of a target header.")
     parser.add_argument(
@@ -493,51 +587,18 @@ def main():
 
     total_roots = len(include_analysis["roots"])
 
-    # Remaining: reachable roots after skips are applied
-    DG = create_include_graph(include_analysis, args.target, ignores=tuple(ignores), skips=tuple(skips))
-    remaining_reachable = count_reachable_roots(include_analysis, DG, args.target)
+    floors = calculate_floors(include_analysis, args.target, ignores=tuple(ignores), skips=tuple(skips))
 
-    # Get original prevalence for the target header (reachable roots without any skips)
-    DG_original = create_graph_from_include_analysis(include_analysis)
-    original_reachable = count_reachable_roots(include_analysis, DG_original, args.target)
-
-    if original_reachable == 0:
-        remaining_pct = 0.0
-    else:
-        remaining_pct = 100.0 * remaining_reachable / original_reachable
-
-    remaining_prevalence = 100.0 * remaining_reachable / total_roots
-
-    # Direct cuts floor
-    direct_floor = compute_direct_cuts_floor(include_analysis, DG, args.target)
-
-    if original_reachable == 0:
-        direct_floor_pct = 0.0
-    else:
-        direct_floor_pct = 100.0 * direct_floor / original_reachable
-
-    direct_floor_prevalence = 100.0 * direct_floor / total_roots
-
-    # All cuts floor
-    all_cuts_floor = compute_all_cuts_floor(include_analysis, DG, args.target)
-
-    if original_reachable == 0:
-        all_cuts_floor_pct = 0.0
-    else:
-        all_cuts_floor_pct = 100.0 * all_cuts_floor / original_reachable
-
-    all_cuts_floor_prevalence = 100.0 * all_cuts_floor / total_roots
-
-    # Root direct includes floor: count of roots that directly include the target
-    roots_set = set(include_analysis["roots"])
-    root_direct_includes_floor = sum(
-        1 for includer in include_analysis["included_by"].get(args.target, []) if includer in roots_set
-    )
-
-    if original_reachable == 0:
-        root_direct_includes_floor_pct = 0.0
-    else:
-        root_direct_includes_floor_pct = 100.0 * root_direct_includes_floor / original_reachable
+    all_cuts_floor_pct = floors["all_cuts_floor_pct"]
+    all_cuts_floor_prevalence = floors["all_cuts_floor_prevalence"]
+    DG = floors["DG"]
+    direct_floor_pct = floors["direct_floor_pct"]
+    direct_floor_prevalence = floors["direct_floor_prevalence"]
+    original_reachable = floors["original_reachable"]
+    remaining_pct = floors["remaining_pct"]
+    remaining_prevalence = floors["remaining_prevalence"]
+    root_direct_includes_floor = floors["root_direct_includes_floor"]
+    root_direct_includes_floor_pct = floors["root_direct_includes_floor_pct"]
 
     root_direct_includes_floor_prevalence = 100.0 * root_direct_includes_floor / total_roots
 
@@ -570,24 +631,11 @@ def main():
 
     edge_dominations = compute_doms_to_target(include_analysis, DG, args.target)
 
-    # Compute top N direct cuts ranked by prevalence of the includer file
-    files = include_analysis["files"]
-    target_idx = files.index(args.target)
-    direct_includers = []
-
-    for includer_idx, _ in DG.in_edges(target_idx):
-        # Skip ignored edges (infinite capacity)
-        if DG[includer_idx][target_idx].get("capacity", 1) == float("inf"):
-            continue
-
-        includer_file = files[includer_idx]
-        includer_prevalence = 100.0 * (include_analysis["prevalence"][includer_file] / total_roots)
-        direct_includers.append(
-            (includer_file, args.target, includer_prevalence, edge_dominations[(includer_file, args.target)])
-        )
-
     # Sort and take top N
     sort_key = (lambda x: x[3]) if args.sort_by == "dominated" else (lambda x: x[2])
+
+    # Compute top N direct cuts
+    direct_includers = compute_direct_cuts(include_analysis, DG, args.target, edge_dominations)
     direct_includers.sort(key=sort_key, reverse=True)
     top_direct = direct_includers[: args.top]
 

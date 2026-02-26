@@ -2,6 +2,7 @@
 
 import argparse
 import csv
+import curses
 import logging
 import sys
 from typing import List, Optional, Set, Tuple
@@ -516,15 +517,341 @@ def calculate_floors(
     }
 
 
+def load_edges_from_file(filepath: str) -> Set[Tuple[str, str]]:
+    edges: Set[Tuple[str, str]] = set()
+
+    with open(filepath, "r", newline="") as f:
+        edges.update(tuple(row) for row in csv.reader(f) if row and row[0].strip() and not row[0].startswith("#"))
+
+    return edges
+
+
+def run_interactive(
+    include_analysis,
+    target: str,
+    ignores_file: str,
+    skips_file: str,
+    top_n: int,
+    sort_by: str,
+):
+    """Run the interactive curses-based TUI for cut_header."""
+
+    def prepend_to_file(filepath: str, includer: str, included: str):
+        """Prepend a CSV row to the given file."""
+        new_line = f"{includer},{included}\n"
+
+        try:
+            with open(filepath, "r") as f:
+                existing = f.read()
+        except FileNotFoundError:
+            existing = ""
+
+        with open(filepath, "w") as f:
+            f.write(new_line + existing)
+
+    def compute_data(include_analysis, target, ignores, skips, top_n, sort_by):
+        """Compute floors, direct cuts, and indirect cuts. Returns a dict of results."""
+        total_roots = len(include_analysis["roots"])
+        floors = calculate_floors(include_analysis, target, ignores=tuple(ignores), skips=tuple(skips))
+        DG = floors["DG"]
+        original_reachable = floors["original_reachable"]
+        original_prevalence = 100.0 * original_reachable / total_roots
+
+        edge_dominations = compute_doms_to_target(include_analysis, DG, target)
+        sort_key = (lambda x: x[3]) if sort_by == "dominated" else (lambda x: x[2])
+
+        direct_includers = compute_direct_cuts(include_analysis, DG, target, edge_dominations)
+        direct_includers.sort(key=sort_key, reverse=True)
+        top_direct = direct_includers[:top_n]
+
+        all_indirect = compute_top_indirect_cuts(include_analysis, DG, target, edge_dominations)
+        all_indirect.sort(key=sort_key, reverse=True)
+        top_indirect = all_indirect[:top_n]
+
+        return {
+            "floors": floors,
+            "total_roots": total_roots,
+            "original_reachable": original_reachable,
+            "original_prevalence": original_prevalence,
+            "top_direct": top_direct,
+            "top_indirect": top_indirect,
+        }
+
+    def strikethrough(text):
+        """Apply Unicode strikethrough to text."""
+        return "".join(ch + "\u0336" for ch in text)
+
+    def render(stdscr, data, selected_idx, action_mode, action_selected, acted_on):
+        """Render the TUI. Returns the total number of selectable lines."""
+        stdscr.erase()
+        max_y, max_x = stdscr.getmaxyx()
+
+        floors = data["floors"]
+        total_roots = data["total_roots"]
+        original_prevalence = data["original_prevalence"]
+        top_direct = data["top_direct"]
+        top_indirect = data["top_indirect"]
+
+        remaining_pct = floors["remaining_pct"]
+        remaining_prevalence = floors["remaining_prevalence"]
+        direct_floor_pct = floors["direct_floor_pct"]
+        direct_floor_prevalence = floors["direct_floor_prevalence"]
+        all_cuts_floor_pct = floors["all_cuts_floor_pct"]
+        all_cuts_floor_prevalence = floors["all_cuts_floor_prevalence"]
+        root_direct_includes_floor = floors["root_direct_includes_floor"]
+        root_direct_includes_floor_pct = floors["root_direct_includes_floor_pct"]
+
+        remaining_delta = remaining_prevalence - original_prevalence
+        direct_floor_delta = direct_floor_prevalence - original_prevalence
+        all_cuts_floor_delta = all_cuts_floor_prevalence - original_prevalence
+        root_direct_includes_floor_prevalence = 100.0 * root_direct_includes_floor / total_roots
+        root_direct_includes_floor_delta = root_direct_includes_floor_prevalence - original_prevalence
+
+        row = 0
+
+        def addstr(y, x, text, attr=0):
+            if y < max_y:
+                try:
+                    stdscr.addnstr(y, x, text, max_x - x - 1, attr)
+                except curses.error:
+                    pass
+
+        # Title
+        addstr(row, 0, f"Target: {target}", curses.A_BOLD)
+        row += 1
+
+        # Floors
+        if remaining_delta:
+            addstr(
+                row,
+                0,
+                f"Remaining: {remaining_pct:.2f}% ({remaining_prevalence:.2f}% prevalence, {remaining_delta:+.2f}%%)",
+            )
+        else:
+            addstr(row, 0, f"Remaining: {remaining_pct:.2f}% ({remaining_prevalence:.2f}% prevalence)")
+        row += 1
+        addstr(
+            row,
+            0,
+            f"Only direct cuts floor: {direct_floor_pct:.2f}% ({direct_floor_prevalence:.2f}% prevalence, {direct_floor_delta:+.2f}%%)",
+        )
+        row += 1
+        addstr(
+            row,
+            0,
+            f"All cuts floor: {all_cuts_floor_pct:.2f}% ({all_cuts_floor_prevalence:.2f}% prevalence, {all_cuts_floor_delta:+.2f}%%)",
+        )
+        row += 1
+        addstr(
+            row,
+            0,
+            f"Root direct includes floor: {root_direct_includes_floor_pct:.2f}% ({root_direct_includes_floor_prevalence:.2f}% prevalence, {root_direct_includes_floor_delta:+.2f}%%)",
+        )
+        row += 1
+        row += 1  # blank line
+
+        # Direct includers
+        addstr(row, 0, f"Top {top_n} direct includers (by {sort_by})", curses.A_BOLD | curses.A_UNDERLINE)
+        row += 1
+
+        selectable_lines = []
+
+        for includer_file, included_file, prevalence, dominated_edges in top_direct:
+            line_text = f"  {includer_file},{included_file},{prevalence:.2f},{dominated_edges}"
+            is_selected = selected_idx == len(selectable_lines)
+            action = acted_on.get((includer_file, included_file))
+            selectable_lines.append((includer_file, included_file))
+
+            if action:
+                addstr(
+                    row,
+                    1,
+                    f"  {strikethrough(f'{includer_file},{included_file},{prevalence:.2f},{dominated_edges}')}  [{action}]",
+                    curses.color_pair(3) | curses.A_DIM,
+                )
+            elif is_selected:
+                addstr(row, 0, "*", curses.color_pair(1) | curses.A_BOLD)
+                addstr(row, 1, line_text, curses.A_BOLD)
+            else:
+                addstr(row, 1, line_text)
+            row += 1
+
+        if not top_direct:
+            addstr(row, 2, "(none available to show)")
+            row += 1
+
+        row += 1  # blank line
+
+        # Indirect cuts
+        addstr(row, 0, f"Top {top_n} indirect cuts (by {sort_by})", curses.A_BOLD | curses.A_UNDERLINE)
+        row += 1
+
+        for includer_file, included_file, prevalence, dominated_edges in top_indirect:
+            line_text = f"  {includer_file},{included_file},{prevalence:.2f},{dominated_edges}"
+            is_selected = selected_idx == len(selectable_lines)
+            action = acted_on.get((includer_file, included_file))
+            selectable_lines.append((includer_file, included_file))
+
+            if action:
+                addstr(
+                    row,
+                    1,
+                    f"  {strikethrough(f'{includer_file},{included_file},{prevalence:.2f},{dominated_edges}')}  [{action}]",
+                    curses.color_pair(3) | curses.A_DIM,
+                )
+            elif is_selected:
+                addstr(row, 0, "*", curses.color_pair(1) | curses.A_BOLD)
+                addstr(row, 1, line_text, curses.A_BOLD)
+            else:
+                addstr(row, 1, line_text)
+            row += 1
+
+        if not top_indirect:
+            addstr(row, 2, "(none available to show)")
+            row += 1
+
+        row += 1  # blank line
+
+        # Action mode overlay
+        if action_mode and 0 <= selected_idx < len(selectable_lines):
+            includer, included = selectable_lines[selected_idx]
+            action_row = row
+            addstr(action_row, 0, f"Action for: {includer} -> {included}", curses.A_BOLD)
+            action_row += 1
+
+            options = [
+                ("i", "Ignore", f"prepend to {ignores_file}"),
+                ("s", "Remove (skip)", f"prepend to {skips_file}"),
+            ]
+            for oi, (key, label, desc) in enumerate(options):
+                prefix = "> " if action_selected == oi else "  "
+                attr = curses.A_BOLD | curses.color_pair(2) if action_selected == oi else 0
+                addstr(action_row, 0, f"{prefix}[{key}] {label} ({desc})", attr)
+                action_row += 1
+
+            addstr(action_row, 0, "  [Esc] Cancel", curses.A_DIM)
+            action_row += 1
+        else:
+            # Footer help
+            addstr(row, 0, "[↑/↓] Select  [Enter] Action  [r] Refresh  [q] Quit", curses.A_DIM)
+
+        stdscr.refresh()
+        return selectable_lines
+
+    def curses_main(stdscr):
+        curses.curs_set(0)  # Hide cursor
+        stdscr.keypad(True)
+
+        # Init colors
+        curses.start_color()
+        curses.use_default_colors()
+        curses.init_pair(1, curses.COLOR_GREEN, -1)  # Selected asterisk
+        curses.init_pair(2, curses.COLOR_CYAN, -1)  # Action highlight
+        curses.init_pair(3, curses.COLOR_RED, -1)  # Crossed out lines
+
+        selected_idx = 0
+        action_mode = False
+        action_selected = 0
+        needs_refresh = True
+        data = None
+        acted_on = {}  # (includer, included) -> "ignored" | "skipped"
+
+        while True:
+            if needs_refresh:
+                # Show a loading message
+                stdscr.erase()
+                stdscr.addstr(0, 0, "Computing... please wait", curses.A_BOLD)
+                stdscr.refresh()
+
+                ignores = load_edges_from_file(ignores_file)
+                skips = load_edges_from_file(skips_file)
+                data = compute_data(include_analysis, target, ignores, skips, top_n, sort_by)
+                stdscr.redrawwin()
+                stdscr.refresh()
+                needs_refresh = False
+                selected_idx = 0
+                action_mode = False
+                acted_on = {}
+
+            selectable_lines = render(stdscr, data, selected_idx, action_mode, action_selected, acted_on)
+            total_selectable = len(selectable_lines)
+
+            key = stdscr.getch()
+
+            if action_mode:
+                action_taken = False
+
+                if key == 27:  # Escape
+                    action_mode = False
+                elif key == curses.KEY_UP:
+                    action_selected = max(0, action_selected - 1)
+                elif key == curses.KEY_DOWN:
+                    action_selected = min(1, action_selected + 1)
+                elif key in (curses.KEY_ENTER, 10, 13):
+                    includer, included = selectable_lines[selected_idx]
+                    if action_selected == 0:  # Ignore
+                        prepend_to_file(ignores_file, includer, included)
+                        acted_on[(includer, included)] = "ignored"
+                    else:  # Remove (skip)
+                        prepend_to_file(skips_file, includer, included)
+                        acted_on[(includer, included)] = "skipped"
+                    action_mode = False
+                    action_taken = True
+                elif key == ord("i"):
+                    includer, included = selectable_lines[selected_idx]
+                    prepend_to_file(ignores_file, includer, included)
+                    acted_on[(includer, included)] = "ignored"
+                    action_mode = False
+                    action_taken = True
+                elif key == ord("s"):
+                    includer, included = selectable_lines[selected_idx]
+                    prepend_to_file(skips_file, includer, included)
+                    acted_on[(includer, included)] = "skipped"
+                    action_mode = False
+                    action_taken = True
+
+                if action_taken:
+                    if (total_selectable - len(acted_on)) > 0:
+                        while True:
+                            selected_idx = (selected_idx + 1) % total_selectable
+                            includer, included = selectable_lines[selected_idx]
+                            if (includer, included) not in acted_on:
+                                break
+            else:
+                if key == ord("q"):
+                    break
+                elif key == ord("r"):
+                    needs_refresh = True
+                elif key == curses.KEY_UP:
+                    if (total_selectable - len(acted_on)) > 0:
+                        while True:
+                            selected_idx = (selected_idx - 1) % total_selectable
+                            includer, included = selectable_lines[selected_idx]
+                            if (includer, included) not in acted_on:
+                                break
+                elif key == curses.KEY_DOWN:
+                    if (total_selectable - len(acted_on)) > 0:
+                        while True:
+                            selected_idx = (selected_idx + 1) % total_selectable
+                            includer, included = selectable_lines[selected_idx]
+                            if (includer, included) not in acted_on:
+                                break
+                elif key in (curses.KEY_ENTER, 10, 13):
+                    if (total_selectable - len(acted_on)) > 0 and 0 <= selected_idx < total_selectable:
+                        action_mode = True
+                        action_selected = 0
+
+    curses.wrapper(curses_main)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Output information about potential cuts of a target header.")
+    parser.add_argument("target", nargs="?", help="Target header file.")
     parser.add_argument(
-        "include_analysis_output",
+        "--include-analysis",
         type=str,
-        nargs="?",
         help="The include analysis output to use (can be a file path or URL). If not specified, pulls the latest.",
     )
-    parser.add_argument("target", help="Target header file.")
     parser.add_argument("--ignores", action="append", default=[], help="Edges to ignore when determining cuts.")
     parser.add_argument("--skips", action="append", default=[], help="Edges to skip when determining cuts.")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
@@ -535,10 +862,11 @@ def main():
         default="prevalence",
         help="Sort results by prevalence (default) or dominated edges count.",
     )
+    parser.add_argument("--interactive", action="store_true", default=False, help="Run in interactive mode.")
     args = parser.parse_args()
 
     try:
-        include_analysis = load_include_analysis(args.include_analysis_output)
+        include_analysis = load_include_analysis(args.include_analysis)
     except ParseError as e:
         message = str(e)
         print("error: Could not parse include analysis output file")
@@ -549,7 +877,7 @@ def main():
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
-    if args.target == "ASK":
+    if not args.target:
         import atexit
         import readline
         from pathlib import Path
@@ -570,14 +898,34 @@ def main():
         print(f"error: {args.target} is not a known file")
         return 1
 
+    if args.interactive:
+        if len(args.ignores) == 0:
+            print("error: interactive mode requires at least one --ignores file")
+            return 1
+
+        if len(args.skips) == 0:
+            print("error: interactive mode requires at least one --skips file")
+            return 1
+
+        # NOTE: the first --ignores and --skips files are the ones updated
+        run_interactive(
+            include_analysis=include_analysis,
+            target=args.target,
+            ignores_file=args.ignores[0],
+            skips_file=args.skips[0],
+            top_n=args.top,
+            sort_by=args.sort_by,
+        )
+        return 0
+
     ignores: Set[Tuple[str, str]] = set()
     skips: Set[Tuple[str, str]] = set()
 
     for ignores_file in args.ignores:
-        with open(ignores_file, "r", newline="") as f:
-            ignores.update(
-                [tuple(row) for row in csv.reader(f) if row and row[0].strip() and not row[0].startswith("#")]
-            )
+        ignores.update(load_edges_from_file(ignores_file))
+
+    for skips_file in args.skips:
+        skips.update(load_edges_from_file(skips_file))
 
     for skips_file in args.skips:
         with open(skips_file, "r", newline="") as f:

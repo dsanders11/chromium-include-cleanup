@@ -4,6 +4,8 @@ import argparse
 import csv
 import curses
 import logging
+import platform
+import subprocess
 import sys
 from typing import List, Optional, Set, Tuple
 
@@ -16,6 +18,18 @@ from networkx.algorithms.flow import build_residual_network
 from count_reachable_roots import count_reachable_roots
 from include_analysis import IncludeAnalysisOutput, ParseError, load_include_analysis
 from utils import create_graph_from_include_analysis
+
+
+def copy_to_clipboard(text):
+    system = platform.system()
+    if system == "Windows":
+        cmd = "clip"
+    elif system == "Darwin":  # macOS
+        cmd = "pbcopy"
+    else:  # Linux
+        cmd = "xclip -selection clipboard"
+
+    subprocess.run(cmd, input=text.encode("utf-8"), shell=True, check=True)
 
 
 def create_include_graph(
@@ -733,7 +747,7 @@ def run_interactive(
             action_row += 1
         else:
             # Footer help
-            addstr(row, 0, "[↑/↓] Select  [Enter] Action  [r] Refresh  [q] Quit", curses.A_DIM)
+            addstr(row, 0, "[↑/↓] Select  [Enter] Action  [c] Copy  [r] Refresh  [q] Quit", curses.A_DIM)
 
         stdscr.refresh()
         return selectable_lines
@@ -822,6 +836,10 @@ def run_interactive(
                     break
                 elif key == ord("r"):
                     needs_refresh = True
+                elif key == ord("c"):
+                    if (total_selectable - len(acted_on)) > 0 and 0 <= selected_idx < total_selectable:
+                        includer, included = selectable_lines[selected_idx]
+                        copy_to_clipboard(f"{includer},{included}")
                 elif key == curses.KEY_UP:
                     if (total_selectable - len(acted_on)) > 0:
                         while True:

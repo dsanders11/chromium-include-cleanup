@@ -630,6 +630,21 @@ def run_interactive(
                 except curses.error:
                     pass
 
+        def addstr_line(y, x, includer_file, included_file, prevalence, dominated_edges, base_attr=0):
+            """Render a line with color-coded prevalence and dominated edges."""
+            edge_text = f"  {includer_file},{included_file},"
+            prev_text = f"{prevalence:.2f}"
+            comma = ","
+            dom_text = f"{dominated_edges}"
+            col = x
+            addstr(y, col, edge_text, base_attr)
+            col += len(edge_text)
+            addstr(y, col, prev_text, curses.color_pair(4) | base_attr)
+            col += len(prev_text)
+            addstr(y, col, comma, base_attr)
+            col += len(comma)
+            addstr(y, col, dom_text, curses.color_pair(5) | base_attr)
+
         # Title
         addstr(row, 0, f"Target: {target}", curses.A_BOLD)
         row += 1
@@ -671,7 +686,6 @@ def run_interactive(
         selectable_lines = []
 
         for includer_file, included_file, prevalence, dominated_edges in top_direct:
-            line_text = f"  {includer_file},{included_file},{prevalence:.2f},{dominated_edges}"
             is_selected = selected_idx == len(selectable_lines)
             action = acted_on.get((includer_file, included_file))
             selectable_lines.append((includer_file, included_file))
@@ -685,9 +699,9 @@ def run_interactive(
                 )
             elif is_selected:
                 addstr(row, 0, "*", curses.color_pair(1) | curses.A_BOLD)
-                addstr(row, 1, line_text, curses.A_BOLD)
+                addstr_line(row, 1, includer_file, included_file, prevalence, dominated_edges, curses.A_BOLD)
             else:
-                addstr(row, 1, line_text)
+                addstr_line(row, 1, includer_file, included_file, prevalence, dominated_edges)
             row += 1
 
         if not top_direct:
@@ -701,7 +715,6 @@ def run_interactive(
         row += 1
 
         for includer_file, included_file, prevalence, dominated_edges in top_indirect:
-            line_text = f"  {includer_file},{included_file},{prevalence:.2f},{dominated_edges}"
             is_selected = selected_idx == len(selectable_lines)
             action = acted_on.get((includer_file, included_file))
             selectable_lines.append((includer_file, included_file))
@@ -715,9 +728,9 @@ def run_interactive(
                 )
             elif is_selected:
                 addstr(row, 0, "*", curses.color_pair(1) | curses.A_BOLD)
-                addstr(row, 1, line_text, curses.A_BOLD)
+                addstr_line(row, 1, includer_file, included_file, prevalence, dominated_edges, curses.A_BOLD)
             else:
-                addstr(row, 1, line_text)
+                addstr_line(row, 1, includer_file, included_file, prevalence, dominated_edges)
             row += 1
 
         if not top_indirect:
@@ -762,6 +775,8 @@ def run_interactive(
         curses.init_pair(1, curses.COLOR_GREEN, -1)  # Selected asterisk
         curses.init_pair(2, curses.COLOR_CYAN, -1)  # Action highlight
         curses.init_pair(3, curses.COLOR_RED, -1)  # Crossed out lines
+        curses.init_pair(4, curses.COLOR_YELLOW, -1)  # Prevalence
+        curses.init_pair(5, curses.COLOR_MAGENTA, -1)  # Dominated edges
 
         selected_idx = 0
         action_mode = False

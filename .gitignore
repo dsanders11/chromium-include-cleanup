@@ -132,3 +132,5 @@ dmypy.json
 *.dot
 
 .cached-include-analysis
+.cut_header_history
+.llm-cache/

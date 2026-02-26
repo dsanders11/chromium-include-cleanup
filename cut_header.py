@@ -455,6 +455,23 @@ def main():
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
+    if args.target == "ASK":
+        import atexit
+        import readline
+        from pathlib import Path
+
+        history_file = Path(__file__).parent / ".cut_header_history"
+
+        try:
+            readline.read_history_file(history_file)
+        except FileNotFoundError:
+            pass
+
+        readline.set_history_length(100)
+        atexit.register(readline.write_history_file, history_file)
+
+        args.target = input("Enter target filename: ").strip()
+
     if args.target not in include_analysis["files"]:
         print(f"error: {args.target} is not a known file")
         return 1

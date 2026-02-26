@@ -960,12 +960,6 @@ def main():
     for skips_file in args.skips:
         skips.update(load_edges_from_file(skips_file))
 
-    for skips_file in args.skips:
-        with open(skips_file, "r", newline="") as f:
-            skips.update(
-                [tuple(row) for row in csv.reader(f) if row and row[0].strip() and not row[0].startswith("#")]
-            )
-
     total_roots = len(include_analysis["roots"])
 
     floors = calculate_floors(include_analysis, args.target, ignores=tuple(ignores), skips=tuple(skips))

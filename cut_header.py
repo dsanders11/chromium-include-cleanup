@@ -3,10 +3,13 @@
 import argparse
 import csv
 import curses
+import io
 import logging
 import platform
+import re
 import subprocess
 import sys
+import urllib.request
 from typing import List, Optional, Set, Tuple
 
 import networkx as nx
@@ -531,11 +534,35 @@ def calculate_floors(
     }
 
 
+def is_gist_url(path: str) -> bool:
+    """Check if a path is a GitHub gist URL."""
+    return bool(re.match(r"https?://gist\.github(?:usercontent)?\.com/", path))
+
+
+def gist_to_raw_url(url: str) -> str:
+    """Convert a GitHub gist URL to its raw content URL."""
+    # Already a raw gist URL
+    if "gist.githubusercontent.com" in url:
+        return url
+    # Convert https://gist.github.com/{user}/{id} or .../raw etc.
+    match = re.match(r"https?://gist\.github\.com/([^/]+)/([a-f0-9]+)(?:/raw)?/?$", url)
+    if match:
+        return f"https://gist.githubusercontent.com/{match.group(1)}/{match.group(2)}/raw"
+    return url
+
+
 def load_edges_from_file(filepath: str) -> Set[Tuple[str, str]]:
     edges: Set[Tuple[str, str]] = set()
 
-    with open(filepath, "r", newline="") as f:
-        edges.update(tuple(row) for row in csv.reader(f) if row and row[0].strip() and not row[0].startswith("#"))
+    if is_gist_url(filepath):
+        raw_url = gist_to_raw_url(filepath)
+        response = urllib.request.urlopen(raw_url)
+        content = response.read().decode("utf-8")
+        reader = csv.reader(io.StringIO(content))
+        edges.update(tuple(row) for row in reader if row and row[0].strip() and not row[0].startswith("#"))
+    else:
+        with open(filepath, "r", newline="") as f:
+            edges.update(tuple(row) for row in csv.reader(f) if row and row[0].strip() and not row[0].startswith("#"))
 
     return edges
 
@@ -543,12 +570,16 @@ def load_edges_from_file(filepath: str) -> Set[Tuple[str, str]]:
 def run_interactive(
     include_analysis,
     target: str,
-    ignores_file: str,
-    skips_file: str,
+    ignores_files: List[str],
+    skips_files: List[str],
     top_n: int,
     sort_by: str,
 ):
     """Run the interactive curses-based TUI for cut_header."""
+
+    # The first file in each list is the one that gets written to
+    ignores_output_file = ignores_files[0]
+    skips_output_file = skips_files[0]
 
     def prepend_to_file(filepath: str, includer: str, included: str):
         """Prepend a CSV row to the given file."""
@@ -747,8 +778,8 @@ def run_interactive(
             action_row += 1
 
             options = [
-                ("i", "Ignore", f"prepend to {ignores_file}"),
-                ("s", "Remove (skip)", f"prepend to {skips_file}"),
+                ("i", "Ignore", f"prepend to {ignores_output_file}"),
+                ("s", "Remove (skip)", f"prepend to {skips_output_file}"),
             ]
             for oi, (key, label, desc) in enumerate(options):
                 prefix = "> " if action_selected == oi else "  "
@@ -792,8 +823,12 @@ def run_interactive(
                 stdscr.addstr(0, 0, "Computing... please wait", curses.A_BOLD)
                 stdscr.refresh()
 
-                ignores = load_edges_from_file(ignores_file)
-                skips = load_edges_from_file(skips_file)
+                ignores: Set[Tuple[str, str]] = set()
+                for f in ignores_files:
+                    ignores.update(load_edges_from_file(f))
+                skips: Set[Tuple[str, str]] = set()
+                for f in skips_files:
+                    skips.update(load_edges_from_file(f))
                 data = compute_data(include_analysis, target, ignores, skips, top_n, sort_by)
                 stdscr.redrawwin()
                 stdscr.refresh()
@@ -819,22 +854,22 @@ def run_interactive(
                 elif key in (curses.KEY_ENTER, 10, 13):
                     includer, included = selectable_lines[selected_idx]
                     if action_selected == 0:  # Ignore
-                        prepend_to_file(ignores_file, includer, included)
+                        prepend_to_file(ignores_output_file, includer, included)
                         acted_on[(includer, included)] = "ignored"
                     else:  # Remove (skip)
-                        prepend_to_file(skips_file, includer, included)
+                        prepend_to_file(skips_output_file, includer, included)
                         acted_on[(includer, included)] = "skipped"
                     action_mode = False
                     action_taken = True
                 elif key == ord("i"):
                     includer, included = selectable_lines[selected_idx]
-                    prepend_to_file(ignores_file, includer, included)
+                    prepend_to_file(ignores_output_file, includer, included)
                     acted_on[(includer, included)] = "ignored"
                     action_mode = False
                     action_taken = True
                 elif key == ord("s"):
                     includer, included = selectable_lines[selected_idx]
-                    prepend_to_file(skips_file, includer, included)
+                    prepend_to_file(skips_output_file, includer, included)
                     acted_on[(includer, included)] = "skipped"
                     action_mode = False
                     action_taken = True
@@ -940,12 +975,20 @@ def main():
             print("error: interactive mode requires at least one --skips file")
             return 1
 
+        if is_gist_url(args.ignores[0]):
+            print("error: the first --ignores in interactive mode must be a local file, not a gist URL")
+            return 1
+
+        if is_gist_url(args.skips[0]):
+            print("error: the first --skips in interactive mode must be a local file, not a gist URL")
+            return 1
+
         # NOTE: the first --ignores and --skips files are the ones updated
         run_interactive(
             include_analysis=include_analysis,
             target=args.target,
-            ignores_file=args.ignores[0],
-            skips_file=args.skips[0],
+            ignores_files=args.ignores,
+            skips_files=args.skips,
             top_n=args.top,
             sort_by=args.sort_by,
         )

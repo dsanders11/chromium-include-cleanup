@@ -660,8 +660,8 @@ def run_interactive(
             with open(filepath, "w") as f:
                 f.write(new_line + existing)
 
-    def compute_data(include_analysis, target, ignores, skips, top_n, sort_by):
-        """Compute floors, direct cuts, and indirect cuts. Returns a dict of results."""
+    def compute_data(include_analysis, target, ignores, skips):
+        """Compute floors, direct cuts, and indirect cuts. Returns a dict of all results."""
         total_roots = len(include_analysis["roots"])
         floors = calculate_floors(include_analysis, target, ignores=tuple(ignores), skips=tuple(skips))
         DG = floors["DG"]
@@ -669,30 +669,24 @@ def run_interactive(
         original_prevalence = 100.0 * original_reachable / total_roots
 
         edge_dominations = compute_doms_to_target(include_analysis, DG, target)
-        sort_key = (lambda x: x[3]) if sort_by == "dominated" else (lambda x: x[2])
 
         direct_includers = compute_direct_cuts(include_analysis, DG, target, edge_dominations)
-        direct_includers.sort(key=sort_key, reverse=True)
-        top_direct = direct_includers[:top_n]
-
         all_indirect = compute_top_indirect_cuts(include_analysis, DG, target, edge_dominations)
-        all_indirect.sort(key=sort_key, reverse=True)
-        top_indirect = all_indirect[:top_n]
 
         return {
             "floors": floors,
             "total_roots": total_roots,
             "original_reachable": original_reachable,
             "original_prevalence": original_prevalence,
-            "top_direct": top_direct,
-            "top_indirect": top_indirect,
+            "all_direct": direct_includers,
+            "all_indirect": all_indirect,
         }
 
     def strikethrough(text):
         """Apply Unicode strikethrough to text."""
         return "".join(ch + "\u0336" for ch in text)
 
-    def render(stdscr, data, selected_idx, action_mode, action_selected, acted_on):
+    def render(stdscr, data, selected_idx, action_mode, action_selected, acted_on, sort_by, top_n):
         """Render the TUI. Returns the total number of selectable lines."""
         stdscr.erase()
         max_y, max_x = stdscr.getmaxyx()
@@ -700,8 +694,10 @@ def run_interactive(
         floors = data["floors"]
         total_roots = data["total_roots"]
         original_prevalence = data["original_prevalence"]
-        top_direct = data["top_direct"]
-        top_indirect = data["top_indirect"]
+
+        sort_key = (lambda x: x[3]) if sort_by == "dominated" else (lambda x: x[2])
+        top_direct = sorted(data["all_direct"], key=sort_key, reverse=True)[:top_n]
+        top_indirect = sorted(data["all_indirect"], key=sort_key, reverse=True)[:top_n]
 
         remaining_pct = floors["remaining_pct"]
         remaining_prevalence = floors["remaining_prevalence"]
@@ -858,7 +854,12 @@ def run_interactive(
         else:
             # Footer help
             quit_hint = "[b] Back" if nested else "[q] Quit"
-            addstr(row, 0, f"[↑/↓] Select  [Enter] Action  [c] Copy  [r] Refresh  {quit_hint}", curses.A_DIM)
+            addstr(
+                row,
+                0,
+                f"[↑/↓] Select  [Enter] Action  [c] Copy  [r] Refresh  [s] Sort: {sort_by}  {quit_hint}",
+                curses.A_DIM,
+            )
             row += 1
 
         # Warnings
@@ -889,6 +890,7 @@ def run_interactive(
         data = None
         acted_on = {}  # (includer, included) -> "ignored" | "skipped"
         any_action_taken = False
+        current_sort_by = sort_by
 
         while True:
             if needs_refresh:
@@ -907,7 +909,7 @@ def run_interactive(
                     f"warning: edge {includer} -> {included} is in both ignores and skips, it will be treated as skipped"
                     for (includer, included) in ignores.intersection(skips)
                 ]
-                data = compute_data(include_analysis, target, ignores, skips, top_n, sort_by)
+                data = compute_data(include_analysis, target, ignores, skips)
                 data["warnings"] = warnings
                 stdscr.redrawwin()
                 stdscr.refresh()
@@ -916,7 +918,9 @@ def run_interactive(
                 action_mode = False
                 acted_on = {}
 
-            selectable_lines = render(stdscr, data, selected_idx, action_mode, action_selected, acted_on)
+            selectable_lines = render(
+                stdscr, data, selected_idx, action_mode, action_selected, acted_on, current_sort_by, top_n
+            )
             total_selectable = len(selectable_lines)
 
             key = stdscr.getch()
@@ -966,6 +970,9 @@ def run_interactive(
                     break
                 elif key == ord("r"):
                     needs_refresh = True
+                elif key == ord("s"):
+                    current_sort_by = "dominated" if current_sort_by == "prevalence" else "prevalence"
+                    selected_idx = 0
                 elif key == ord("c"):
                     if (total_selectable - len(acted_on)) > 0 and 0 <= selected_idx < total_selectable:
                         includer, included = selectable_lines[selected_idx]

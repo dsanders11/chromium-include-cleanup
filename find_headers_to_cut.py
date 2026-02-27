@@ -101,10 +101,6 @@ def run_interactive(
             reader = csv.reader(f)
             rows = [row for row in reader if row and row[0].strip()]
 
-    # Sort by top_direct_dominated (column 3) descending
-    rows.sort(key=lambda r: int(r[3]) if len(r) > 3 else 0, reverse=True)
-    rows = rows[:top_n]
-
     if not rows:
         print("No rows found in pre-calculated output.", file=sys.stderr)
         return
@@ -112,8 +108,35 @@ def run_interactive(
     # Track headers that have been acted on in cut_header's interactive mode
     acted_on_headers: set = set()
 
-    def render(stdscr, rows, selected_idx, scroll_offset):
-        """Render the TUI. Returns nothing."""
+    SORT_MODES = ["remaining", "floor", "dominated", "tsize"]
+    SORT_COLUMN_MAP = {
+        "remaining": 1,
+        "floor": 2,
+        "dominated": 3,
+        "tsize": 4,
+    }
+    SORT_PARSERS = {
+        "remaining": lambda v: float(v) if v else 0.0,
+        "floor": lambda v: float(v) if v else 0.0,
+        "dominated": lambda v: int(v) if v else 0,
+        "tsize": lambda v: int(v) if v else 0,
+    }
+
+    def _sorted_and_sliced(rows, sort_by, top_n):
+        """Return rows sorted by sort_by column descending, then sliced to top_n."""
+        col = SORT_COLUMN_MAP[sort_by]
+        parser = SORT_PARSERS[sort_by]
+        sorted_rows = sorted(
+            rows,
+            key=lambda r: parser(r[col]) if len(r) > col else 0,
+            reverse=True,
+        )
+        return sorted_rows[:top_n]
+
+    def render(stdscr, rows, selected_idx, scroll_offset, sort_by, top_n):
+        """Render the TUI. Returns the displayed (sorted+sliced) rows list."""
+        display_rows = _sorted_and_sliced(rows, sort_by, top_n)
+
         stdscr.erase()
         max_y, max_x = stdscr.getmaxyx()
 
@@ -127,10 +150,10 @@ def run_interactive(
                     pass
 
         # Title
-        addstr(row, 0, f"Headers to cut ({len(rows)} results)", curses.A_BOLD)
+        addstr(row, 0, f"Headers to cut ({len(display_rows)}/{len(rows)} shown, sort: {sort_by})", curses.A_BOLD)
         row += 1
 
-        # Column headers
+        # Column headers - highlight the active sort column
         addstr(row, 3, "header", curses.A_UNDERLINE)
         # Right-align column headers at fixed positions
         col_remaining = max_x - 45
@@ -138,16 +161,23 @@ def run_interactive(
         col_dominated = max_x - 20
         col_tsize = max_x - 10
         if col_remaining > 10:
-            addstr(row, col_remaining, "remain%", curses.A_UNDERLINE)
-            addstr(row, col_floor, "floor%", curses.A_UNDERLINE)
-            addstr(row, col_dominated, "dominated", curses.A_UNDERLINE)
-            addstr(row, col_tsize, "tsize", curses.A_UNDERLINE)
+
+            def col_attr(col_name):
+                attr = curses.A_UNDERLINE
+                if col_name == sort_by:
+                    attr |= curses.A_BOLD
+                return attr
+
+            addstr(row, col_remaining, "remain%", col_attr("remaining"))
+            addstr(row, col_floor, "floor%", col_attr("floor"))
+            addstr(row, col_dominated, "dominated", col_attr("dominated"))
+            addstr(row, col_tsize, "tsize", col_attr("tsize"))
         row += 1
 
         # Available lines for data rows (reserve 2 for footer)
         available_lines = max_y - row - 2
 
-        visible_rows = rows[scroll_offset : scroll_offset + available_lines]
+        visible_rows = display_rows[scroll_offset : scroll_offset + available_lines]
 
         for i, data_row in enumerate(visible_rows):
             actual_idx = scroll_offset + i
@@ -186,8 +216,8 @@ def run_interactive(
 
         # Scroll indicator
         footer_row = max_y - 2
-        if len(rows) > available_lines:
-            addstr(footer_row, 0, f"[{selected_idx + 1}/{len(rows)}]", curses.A_DIM)
+        if len(display_rows) > available_lines:
+            addstr(footer_row, 0, f"[{selected_idx + 1}/{len(display_rows)}]", curses.A_DIM)
 
         # Footer help
         can_enter = include_analysis is not None and ignores_files and skips_files
@@ -196,12 +226,13 @@ def run_interactive(
             parts = ["[↑/↓] Select", "[Enter] Inspect"]
             if has_stale:
                 parts.append("[r] Refresh")
-            parts.extend(["[c] Copy header", "[q] Quit"])
+            parts.extend([f"[s] Sort: {sort_by}", "[c] Copy header", "[q] Quit"])
             addstr(max_y - 1, 0, "  ".join(parts), curses.A_DIM)
         else:
-            addstr(max_y - 1, 0, "[↑/↓] Select  [c] Copy header  [q] Quit", curses.A_DIM)
+            addstr(max_y - 1, 0, f"[↑/↓] Select  [s] Sort: {sort_by}  [c] Copy header  [q] Quit", curses.A_DIM)
 
         stdscr.refresh()
+        return display_rows
 
     def curses_main(stdscr):
         curses.curs_set(0)  # Hide cursor
@@ -218,6 +249,7 @@ def run_interactive(
 
         selected_idx = 0
         scroll_offset = 0
+        sort_by = "dominated"
 
         while True:
             max_y, _ = stdscr.getmaxyx()
@@ -229,15 +261,20 @@ def run_interactive(
             elif selected_idx >= scroll_offset + available_lines:
                 scroll_offset = selected_idx - available_lines + 1
 
-            render(stdscr, rows, selected_idx, scroll_offset)
+            display_rows = render(stdscr, rows, selected_idx, scroll_offset, sort_by, top_n)
 
             key = stdscr.getch()
 
             if key == ord("q"):
                 break
+            elif key == ord("s"):
+                current_idx = SORT_MODES.index(sort_by)
+                sort_by = SORT_MODES[(current_idx + 1) % len(SORT_MODES)]
+                selected_idx = 0
+                scroll_offset = 0
             elif key == ord("c"):
-                if 0 <= selected_idx < len(rows):
-                    header = rows[selected_idx][0] if rows[selected_idx] else ""
+                if 0 <= selected_idx < len(display_rows):
+                    header = display_rows[selected_idx][0] if display_rows[selected_idx] else ""
                     copy_to_clipboard(header)
             elif key == ord("r"):
                 if include_analysis is not None and ignores_files and skips_files and acted_on_headers:
@@ -289,8 +326,13 @@ def run_interactive(
                     stdscr.redrawwin()
                     stdscr.refresh()
             elif key in (curses.KEY_ENTER, 10, 13):
-                if include_analysis is not None and ignores_files and skips_files and 0 <= selected_idx < len(rows):
-                    header = rows[selected_idx][0] if rows[selected_idx] else ""
+                if (
+                    include_analysis is not None
+                    and ignores_files
+                    and skips_files
+                    and 0 <= selected_idx < len(display_rows)
+                ):
+                    header = display_rows[selected_idx][0] if display_rows[selected_idx] else ""
                     if header and header in include_analysis["files"]:
                         # Exit curses temporarily to run cut_header's interactive mode
                         curses.endwin()
@@ -322,17 +364,17 @@ def run_interactive(
                         stdscr.redrawwin()
                         stdscr.refresh()
             elif key == curses.KEY_UP:
-                selected_idx = (selected_idx - 1) % len(rows)
+                selected_idx = (selected_idx - 1) % len(display_rows)
             elif key == curses.KEY_DOWN:
-                selected_idx = (selected_idx + 1) % len(rows)
+                selected_idx = (selected_idx + 1) % len(display_rows)
             elif key == curses.KEY_PPAGE:  # Page Up
                 selected_idx = max(0, selected_idx - available_lines)
             elif key == curses.KEY_NPAGE:  # Page Down
-                selected_idx = min(len(rows) - 1, selected_idx + available_lines)
+                selected_idx = min(len(display_rows) - 1, selected_idx + available_lines)
             elif key == curses.KEY_HOME:
                 selected_idx = 0
             elif key == curses.KEY_END:
-                selected_idx = len(rows) - 1
+                selected_idx = len(display_rows) - 1
 
     curses.wrapper(curses_main)
 

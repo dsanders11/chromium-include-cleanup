@@ -33,21 +33,21 @@ from utils import create_graph_from_include_analysis
 
 _worker_include_analysis = None
 _worker_ignores = None
-_worker_skips = None
+_worker_removes = None
 
 
-def _init_worker(include_analysis_output, ignores, skips):
-    global _worker_include_analysis, _worker_ignores, _worker_skips
+def _init_worker(include_analysis_output, ignores, removes):
+    global _worker_include_analysis, _worker_ignores, _worker_removes
     _worker_include_analysis = load_include_analysis(include_analysis_output)
     _worker_ignores = ignores
-    _worker_skips = skips
+    _worker_removes = removes
 
 
 def calculate_results(headers):
     results = []
 
     for header in headers:
-        floors = calculate_floors(_worker_include_analysis, header, ignores=_worker_ignores, skips=_worker_skips)
+        floors = calculate_floors(_worker_include_analysis, header, ignores=_worker_ignores, removes=_worker_removes)
 
         edge_dominations = compute_doms_to_target(_worker_include_analysis, floors["DG"], header)
         top_directs = compute_direct_cuts(_worker_include_analysis, floors["DG"], header, edge_dominations)
@@ -62,12 +62,12 @@ def calculate_results(headers):
 
 def create_modified_include_graph(
     include_analysis: IncludeAnalysisOutput,
-    skips: Tuple[Tuple[str, str]],
+    removes: Tuple[Tuple[str, str]],
 ) -> nx.DiGraph:
     DG: nx.DiGraph = create_graph_from_include_analysis(include_analysis)
     files = include_analysis["files"]
 
-    for includer, included in skips:
+    for includer, included in removes:
         if includer in files and included in files:
             includer_idx = files.index(includer)
             included_idx = files.index(included)
@@ -75,9 +75,9 @@ def create_modified_include_graph(
             if DG.has_edge(includer_idx, included_idx):
                 DG.remove_edge(includer_idx, included_idx)
             else:
-                logging.warning(f"Skip edge {includer} -> {included} not found in include graph")
+                logging.warning(f"Remove edge {includer} -> {included} not found in include graph")
         else:
-            logging.warning(f"Skip edge {includer} -> {included} not found in include analysis")
+            logging.warning(f"Remove edge {includer} -> {included} not found in include analysis")
 
     return DG
 
@@ -87,7 +87,7 @@ def run_interactive(
     top_n: int,
     include_analysis=None,
     ignores_files=None,
-    skips_files=None,
+    removes_files=None,
     gh_token=None,
 ):
     """Run the interactive curses-based TUI for browsing pre-calculated header results."""
@@ -222,7 +222,7 @@ def run_interactive(
             addstr(footer_row, 0, f"[{selected_idx + 1}/{len(display_rows)}]", curses.A_DIM)
 
         # Footer help
-        can_enter = include_analysis is not None and ignores_files and skips_files
+        can_enter = include_analysis is not None and ignores_files and removes_files
         has_stale = len(acted_on_headers) > 0
         if can_enter:
             parts = ["[↑/↓] Select", "[Enter] Inspect"]
@@ -285,19 +285,19 @@ def run_interactive(
                     header = display_rows[selected_idx][0] if display_rows[selected_idx] else ""
                     open_url(f"https://source.chromium.org/chromium/chromium/src/+/main:{header}")
             elif key == ord("r"):
-                if include_analysis is not None and ignores_files and skips_files and acted_on_headers:
+                if include_analysis is not None and ignores_files and removes_files and acted_on_headers:
                     # Show computing message
                     stdscr.erase()
                     stdscr.addstr(0, 0, "Refreshing modified headers... please wait", curses.A_BOLD)
                     stdscr.refresh()
 
-                    # Load current ignores and skips from files
+                    # Load current ignores and removes from files
                     ignores: Set[Tuple[str, str]] = set()
                     for f in ignores_files:
                         ignores.update(load_edges_from_file(f))
-                    skips: Set[Tuple[str, str]] = set()
-                    for f in skips_files:
-                        skips.update(load_edges_from_file(f))
+                    removes: Set[Tuple[str, str]] = set()
+                    for f in removes_files:
+                        removes.update(load_edges_from_file(f))
 
                     # Recalculate for each acted-on header
                     for row_data in rows:
@@ -308,7 +308,7 @@ def run_interactive(
                                     include_analysis,
                                     header,
                                     ignores=tuple(ignores),
-                                    skips=tuple(skips),
+                                    removes=tuple(removes),
                                 )
                                 edge_dominations = compute_doms_to_target(
                                     include_analysis,
@@ -337,7 +337,7 @@ def run_interactive(
                 if (
                     include_analysis is not None
                     and ignores_files
-                    and skips_files
+                    and removes_files
                     and 0 <= selected_idx < len(display_rows)
                 ):
                     header = display_rows[selected_idx][0] if display_rows[selected_idx] else ""
@@ -348,7 +348,7 @@ def run_interactive(
                             include_analysis=include_analysis,
                             target=header,
                             ignores_files=ignores_files,
-                            skips_files=skips_files,
+                            removes_files=removes_files,
                             top_n=15,
                             sort_by="dominated",
                             gh_token=gh_token,
@@ -423,9 +423,9 @@ def main():
     ignores_group.add_argument("--ignores", action="append", default=[], help="Edges to ignore when determining cuts.")
     ignores_group.add_argument("--ignores-file", type=str, help="File containing edges to ignore (one per line).")
 
-    skips_group = parser.add_mutually_exclusive_group()
-    skips_group.add_argument("--skips", action="append", default=[], help="Edges to skip when determining cuts.")
-    skips_group.add_argument("--skips-file", type=str, help="File containing edges to skip (one per line).")
+    removes_group = parser.add_mutually_exclusive_group()
+    removes_group.add_argument("--removes", action="append", default=[], help="Edges to remove when determining cuts.")
+    removes_group.add_argument("--removes-file", type=str, help="File containing edges to remove (one per line).")
     parser.add_argument("--interactive", action="store_true", default=False, help="Run in interactive mode.")
     parser.add_argument(
         "--pre-calculated-output",
@@ -452,16 +452,16 @@ def main():
         with open(args.ignores_file) as f:
             args.ignores = [line.strip() for line in f if line.strip()]
 
-    if args.skips_file:
-        with open(args.skips_file) as f:
-            args.skips = [line.strip() for line in f if line.strip()]
+    if args.removes_file:
+        with open(args.removes_file) as f:
+            args.removes = [line.strip() for line in f if line.strip()]
 
     if args.interactive:
         if len(args.ignores) == 0:
             parser.error("error: interactive mode requires at least one ignores file")
 
-        if len(args.skips) == 0:
-            parser.error("error: interactive mode requires at least one skips file")
+        if len(args.removes) == 0:
+            parser.error("error: interactive mode requires at least one removes file")
 
         load_dotenv()  # Load environment variables from .env file if present
         gh_token = os.environ.get("GH_TOKEN")
@@ -469,8 +469,8 @@ def main():
         if is_gist_url(args.ignores[0]) and not gh_token:
             parser.error("error: the first ignores is a gist URL but GH_TOKEN environment variable is not set")
 
-        if is_gist_url(args.skips[0]) and not gh_token:
-            parser.error("error: the first skips is a gist URL but GH_TOKEN environment variable is not set")
+        if is_gist_url(args.removes[0]) and not gh_token:
+            parser.error("error: the first removes is a gist URL but GH_TOKEN environment variable is not set")
 
     try:
         include_analysis = load_include_analysis(args.include_analysis_output)
@@ -483,20 +483,20 @@ def main():
 
     if args.interactive:
         ignores_files = args.ignores if args.ignores else None
-        skips_files = args.skips if args.skips else None
+        removes_files = args.removes if args.removes else None
 
         run_interactive(
             args.pre_calculated_output,
             args.top,
             include_analysis=include_analysis,
             ignores_files=ignores_files,
-            skips_files=skips_files,
+            removes_files=removes_files,
             gh_token=gh_token,
         )
         return 0
 
     ignores: Set[Tuple[str, str]] = set()
-    skips: Set[Tuple[str, str]] = set()
+    removes: Set[Tuple[str, str]] = set()
 
     for ignores_file in args.ignores:
         with open(ignores_file, "r", newline="") as f:
@@ -504,18 +504,18 @@ def main():
                 [tuple(row) for row in csv.reader(f) if row and row[0].strip() and not row[0].startswith("#")]
             )
 
-    for skips_file in args.skips:
-        with open(skips_file, "r", newline="") as f:
-            skips.update(
+    for removes_file in args.removes:
+        with open(removes_file, "r", newline="") as f:
+            removes.update(
                 [tuple(row) for row in csv.reader(f) if row and row[0].strip() and not row[0].startswith("#")]
             )
 
-    for edge in ignores.intersection(skips):
+    for edge in ignores.intersection(removes):
         logging.warning(
-            f"warning: edge {edge[0]} -> {edge[1]} is in both ignores and skips, it will be treated as skipped"
+            f"warning: edge {edge[0]} -> {edge[1]} is in both ignores and removes, it will be treated as removed"
         )
 
-    modified_include_graph = create_modified_include_graph(include_analysis, tuple(skips))
+    modified_include_graph = create_modified_include_graph(include_analysis, tuple(removes))
 
     total_roots = len(include_analysis["roots"])
     prevalence = include_analysis["prevalence"]
@@ -535,7 +535,7 @@ def main():
         and not (header.startswith(EXCLUDED_PREFIXES) and not header.startswith(EXCLUDED_EXCEPTIONS))
     ]
 
-    # Recalculate prevalence for candidates using modified include graph (with skip edges removed)
+    # Recalculate prevalence for candidates using modified include graph (with edges removed)
     files = include_analysis["files"]
     file_idx_lookup = {filename: idx for idx, filename in enumerate(files)}
     root_indices = {file_idx_lookup[root] for root in include_analysis["roots"] if root in file_idx_lookup}
@@ -558,20 +558,20 @@ def main():
         f"Found {len(candidates)} headers with prevalence {args.min_prevalence}% - {args.max_prevalence}% of {total_roots} roots"
     )
     print(
-        f"{original_candidate_count - len(candidates)} candidates removed after recalculating prevalence with skip edges removed"
+        f"{original_candidate_count - len(candidates)} candidates removed after recalculating prevalence with edges removed"
     )
 
     chunk_size = 4
     chunked = list(batched(candidates, chunk_size))
     ignores_tuple = tuple(ignores)
-    skips_tuple = tuple(skips)
+    removes_tuple = tuple(removes)
 
     results = []
     with logging_redirect_tqdm(), tqdm(
         disable=len(candidates) <= 1, total=len(candidates), unit="header"
     ) as progress_output:
         with concurrent.futures.ProcessPoolExecutor(
-            initializer=_init_worker, initargs=(args.include_analysis_output, ignores_tuple, skips_tuple)
+            initializer=_init_worker, initargs=(args.include_analysis_output, ignores_tuple, removes_tuple)
         ) as pool:
             for chunk_results in pool.map(calculate_results, chunked):
                 progress_output.update(min(chunk_size, progress_output.total - progress_output.n))

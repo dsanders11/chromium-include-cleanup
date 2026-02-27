@@ -52,13 +52,13 @@ def create_include_graph(
     include_analysis: IncludeAnalysisOutput,
     target: str,
     ignores: Optional[Tuple[Tuple[str, str]]],
-    skips: Optional[Tuple[Tuple[str, str]]],
+    removes: Optional[Tuple[Tuple[str, str]]],
 ) -> nx.DiGraph:
     DG: nx.DiGraph = create_graph_from_include_analysis(include_analysis)
     files = include_analysis["files"]
 
-    if skips:
-        for includer, included in skips:
+    if removes:
+        for includer, included in removes:
             if includer in files and included in files:
                 includer_idx = files.index(includer)
                 included_idx = files.index(included)
@@ -66,9 +66,9 @@ def create_include_graph(
                 if DG.has_edge(includer_idx, included_idx):
                     DG.remove_edge(includer_idx, included_idx)
                 else:
-                    logging.warning(f"Skip edge {includer} -> {included} not found in include graph")
+                    logging.warning(f"Remove edge {includer} -> {included} not found in include graph")
             else:
-                logging.warning(f"Skip edge {includer} -> {included} not found in include analysis")
+                logging.warning(f"Remove edge {includer} -> {included} not found in include analysis")
 
     if ignores:
         # Set capacity high for ignored edges to prevent cutting them
@@ -483,15 +483,15 @@ def calculate_floors(
     include_analysis: IncludeAnalysisOutput,
     target: str,
     ignores: Optional[Tuple[Tuple[str, str]]] = None,
-    skips: Optional[Tuple[Tuple[str, str]]] = None,
+    removes: Optional[Tuple[Tuple[str, str]]] = None,
 ):
     total_roots = len(include_analysis["roots"])
 
-    # Remaining: reachable roots after skips are applied
-    DG = create_include_graph(include_analysis, target, ignores=ignores, skips=skips)
+    # Remaining: reachable roots after removes are applied
+    DG = create_include_graph(include_analysis, target, ignores=ignores, removes=removes)
     remaining_reachable = count_reachable_roots(include_analysis, DG, target)
 
-    # Get original prevalence for the target header (reachable roots without any skips)
+    # Get original prevalence for the target header (reachable roots without any removes)
     DG_original = create_graph_from_include_analysis(include_analysis)
     original_reachable = count_reachable_roots(include_analysis, DG_original, target)
 
@@ -637,7 +637,7 @@ def run_interactive(
     include_analysis,
     target: str,
     ignores_files: List[str],
-    skips_files: List[str],
+    removes_files: List[str],
     top_n: int,
     sort_by: str,
     gh_token: Optional[str] = None,
@@ -647,7 +647,7 @@ def run_interactive(
 
     # The first file in each list is the one that gets written to
     ignores_output_file = ignores_files[0]
-    skips_output_file = skips_files[0]
+    removes_output_file = removes_files[0]
 
     def prepend_to_file(filepath: str, includer: str, included: str):
         """Prepend a CSV row to the given file (local or gist)."""
@@ -671,10 +671,10 @@ def run_interactive(
             with open(filepath, "w") as f:
                 f.write(new_line + existing)
 
-    def compute_data(include_analysis, target, ignores, skips):
+    def compute_data(include_analysis, target, ignores, removes):
         """Compute floors, direct cuts, and indirect cuts. Returns a dict of all results."""
         total_roots = len(include_analysis["roots"])
-        floors = calculate_floors(include_analysis, target, ignores=tuple(ignores), skips=tuple(skips))
+        floors = calculate_floors(include_analysis, target, ignores=tuple(ignores), removes=tuple(removes))
         DG = floors["DG"]
         original_reachable = floors["original_reachable"]
         original_prevalence = 100.0 * original_reachable / total_roots
@@ -852,7 +852,7 @@ def run_interactive(
 
             options = [
                 ("i", "Ignore", f"prepend to {ignores_output_file}"),
-                ("s", "Remove (skip)", f"prepend to {skips_output_file}"),
+                ("s", "Remove", f"prepend to {removes_output_file}"),
             ]
             for oi, (key, label, desc) in enumerate(options):
                 prefix = "> " if action_selected == oi else "  "
@@ -899,7 +899,7 @@ def run_interactive(
         action_selected = 0
         needs_refresh = True
         data = None
-        acted_on = {}  # (includer, included) -> "ignored" | "skipped"
+        acted_on = {}  # (includer, included) -> "ignored" | "removed"
         any_action_taken = False
         current_sort_by = sort_by
 
@@ -913,14 +913,14 @@ def run_interactive(
                 ignores: Set[Tuple[str, str]] = set()
                 for f in ignores_files:
                     ignores.update(load_edges_from_file(f))
-                skips: Set[Tuple[str, str]] = set()
-                for f in skips_files:
-                    skips.update(load_edges_from_file(f))
+                removes: Set[Tuple[str, str]] = set()
+                for f in removes_files:
+                    removes.update(load_edges_from_file(f))
                 warnings = [
-                    f"warning: edge {includer} -> {included} is in both ignores and skips, it will be treated as skipped"
-                    for (includer, included) in ignores.intersection(skips)
+                    f"warning: edge {includer} -> {included} is in both ignores and removes, it will be treated as removed"
+                    for (includer, included) in ignores.intersection(removes)
                 ]
-                data = compute_data(include_analysis, target, ignores, skips)
+                data = compute_data(include_analysis, target, ignores, removes)
                 data["warnings"] = warnings
                 stdscr.redrawwin()
                 stdscr.refresh()
@@ -950,9 +950,9 @@ def run_interactive(
                     if action_selected == 0:  # Ignore
                         prepend_to_file(ignores_output_file, includer, included)
                         acted_on[(includer, included)] = "ignored"
-                    else:  # Remove (skip)
-                        prepend_to_file(skips_output_file, includer, included)
-                        acted_on[(includer, included)] = "skipped"
+                    else:  # Remove
+                        prepend_to_file(removes_output_file, includer, included)
+                        acted_on[(includer, included)] = "removed"
                     action_mode = False
                     action_taken = True
                 elif key == ord("i"):
@@ -963,8 +963,8 @@ def run_interactive(
                     action_taken = True
                 elif key == ord("s"):
                     includer, included = selectable_lines[selected_idx]
-                    prepend_to_file(skips_output_file, includer, included)
-                    acted_on[(includer, included)] = "skipped"
+                    prepend_to_file(removes_output_file, includer, included)
+                    acted_on[(includer, included)] = "removed"
                     action_mode = False
                     action_taken = True
 
@@ -1028,9 +1028,9 @@ def main():
     ignores_group.add_argument("--ignores", action="append", default=[], help="Edges to ignore when determining cuts.")
     ignores_group.add_argument("--ignores-file", type=str, help="File containing edges to ignore (one per line).")
 
-    skips_group = parser.add_mutually_exclusive_group()
-    skips_group.add_argument("--skips", action="append", default=[], help="Edges to skip when determining cuts.")
-    skips_group.add_argument("--skips-file", type=str, help="File containing edges to skip (one per line).")
+    removes_group = parser.add_mutually_exclusive_group()
+    removes_group.add_argument("--removes", action="append", default=[], help="Edges to remove when determining cuts.")
+    removes_group.add_argument("--removes-file", type=str, help="File containing edges to remove (one per line).")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     parser.add_argument("--top", type=int, default=5, help="Number of top cuts to display (default: 5).")
     parser.add_argument(
@@ -1046,9 +1046,9 @@ def main():
         with open(args.ignores_file) as f:
             args.ignores = [line.strip() for line in f if line.strip()]
 
-    if args.skips_file:
-        with open(args.skips_file) as f:
-            args.skips = [line.strip() for line in f if line.strip()]
+    if args.removes_file:
+        with open(args.removes_file) as f:
+            args.removes = [line.strip() for line in f if line.strip()]
 
     try:
         include_analysis = load_include_analysis(args.include_analysis)
@@ -1067,8 +1067,8 @@ def main():
             print("error: interactive mode requires at least one ignores file")
             return 1
 
-        if len(args.skips) == 0:
-            print("error: interactive mode requires at least one skips file")
+        if len(args.removes) == 0:
+            print("error: interactive mode requires at least one removes file")
             return 1
 
         load_dotenv()  # Load environment variables from .env file if present
@@ -1078,8 +1078,8 @@ def main():
             print("error: the first ignores is a gist URL but GH_TOKEN environment variable is not set")
             return 1
 
-        if is_gist_url(args.skips[0]) and not gh_token:
-            print("error: the first skips is a gist URL but GH_TOKEN environment variable is not set")
+        if is_gist_url(args.removes[0]) and not gh_token:
+            print("error: the first removes is a gist URL but GH_TOKEN environment variable is not set")
             return 1
 
     if not args.target:
@@ -1104,12 +1104,12 @@ def main():
         return 1
 
     if args.interactive:
-        # NOTE: the first --ignores and --skips files are the ones updated
+        # NOTE: the first --ignores and --removes files are the ones updated
         run_interactive(
             include_analysis=include_analysis,
             target=args.target,
             ignores_files=args.ignores,
-            skips_files=args.skips,
+            removes_files=args.removes,
             top_n=args.top,
             sort_by=args.sort_by,
             gh_token=gh_token,
@@ -1117,22 +1117,22 @@ def main():
         return 0
 
     ignores: Set[Tuple[str, str]] = set()
-    skips: Set[Tuple[str, str]] = set()
+    removes: Set[Tuple[str, str]] = set()
 
     for ignores_file in args.ignores:
         ignores.update(load_edges_from_file(ignores_file))
 
-    for skips_file in args.skips:
-        skips.update(load_edges_from_file(skips_file))
+    for removes_file in args.removes:
+        removes.update(load_edges_from_file(removes_file))
 
-    for edge in ignores.intersection(skips):
+    for edge in ignores.intersection(removes):
         logging.warning(
-            f"warning: edge {edge[0]} -> {edge[1]} is in both ignores and skips, it will be treated as skipped"
+            f"warning: edge {edge[0]} -> {edge[1]} is in both ignores and removes, it will be treated as removed"
         )
 
     total_roots = len(include_analysis["roots"])
 
-    floors = calculate_floors(include_analysis, args.target, ignores=tuple(ignores), skips=tuple(skips))
+    floors = calculate_floors(include_analysis, args.target, ignores=tuple(ignores), removes=tuple(removes))
 
     all_cuts_floor_pct = floors["all_cuts_floor_pct"]
     all_cuts_floor_prevalence = floors["all_cuts_floor_prevalence"]

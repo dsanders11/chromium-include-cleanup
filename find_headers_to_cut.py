@@ -13,6 +13,7 @@ from itertools import batched
 from typing import Set, Tuple
 
 import networkx as nx
+from dotenv import load_dotenv
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
@@ -462,6 +463,7 @@ def main():
         if len(args.skips) == 0:
             parser.error("error: interactive mode requires at least one skips file")
 
+        load_dotenv()  # Load environment variables from .env file if present
         gh_token = os.environ.get("GH_TOKEN")
 
         if is_gist_url(args.ignores[0]) and not gh_token:

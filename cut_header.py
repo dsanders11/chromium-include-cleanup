@@ -12,11 +12,12 @@ import re
 import subprocess
 import sys
 import urllib.request
+from collections import defaultdict
+from itertools import batched
 from typing import List, Optional, Set, Tuple
 
 import networkx as nx
-from collections import defaultdict
-from itertools import batched
+from dotenv import load_dotenv
 from networkx.algorithms.connectivity import minimum_st_edge_cut
 from networkx.algorithms.flow import build_residual_network
 
@@ -1070,6 +1071,7 @@ def main():
             print("error: interactive mode requires at least one skips file")
             return 1
 
+        load_dotenv()  # Load environment variables from .env file if present
         gh_token = os.environ.get("GH_TOKEN")
 
         if is_gist_url(args.ignores[0]) and not gh_token:

@@ -37,6 +37,16 @@ def copy_to_clipboard(text):
     subprocess.run(cmd, input=text.encode("utf-8"), shell=True, check=True)
 
 
+def open_url(url):
+    system = platform.system()
+    if system == "Windows":
+        os.startfile(url)
+    elif system == "Darwin":  # macOS
+        subprocess.run(["open", url], check=True)
+    else:  # Linux
+        subprocess.run(["xdg-open", url], check=True)
+
+
 def create_include_graph(
     include_analysis: IncludeAnalysisOutput,
     target: str,
@@ -857,7 +867,7 @@ def run_interactive(
             addstr(
                 row,
                 0,
-                f"[↑/↓] Select  [Enter] Action  [c] Copy  [r] Refresh  [s] Sort: {sort_by}  {quit_hint}",
+                f"[↑/↓] Select  [Enter] Action  [c] Copy  [o] Open  [r] Refresh  [s] Sort: {sort_by}  {quit_hint}",
                 curses.A_DIM,
             )
             row += 1
@@ -977,6 +987,10 @@ def run_interactive(
                     if (total_selectable - len(acted_on)) > 0 and 0 <= selected_idx < total_selectable:
                         includer, included = selectable_lines[selected_idx]
                         copy_to_clipboard(f"{includer},{included}")
+                elif key == ord("o"):
+                    if (total_selectable - len(acted_on)) > 0 and 0 <= selected_idx < total_selectable:
+                        includer, included = selectable_lines[selected_idx]
+                        open_url(f"https://source.chromium.org/chromium/chromium/src/+/main:{includer}")
                 elif key == curses.KEY_UP:
                     if (total_selectable - len(acted_on)) > 0:
                         while True:

@@ -24,6 +24,7 @@ from cut_header import (
     gist_to_raw_url,
     is_gist_url,
     load_edges_from_file,
+    open_url,
     run_interactive as cut_header_run_interactive,
 )
 from include_analysis import IncludeAnalysisOutput, ParseError, load_include_analysis
@@ -226,10 +227,12 @@ def run_interactive(
             parts = ["[↑/↓] Select", "[Enter] Inspect"]
             if has_stale:
                 parts.append("[r] Refresh")
-            parts.extend([f"[s] Sort: {sort_by}", "[c] Copy header", "[q] Quit"])
+            parts.extend([f"[s] Sort: {sort_by}", "[c] Copy header", "[o] Open", "[q] Quit"])
             addstr(max_y - 1, 0, "  ".join(parts), curses.A_DIM)
         else:
-            addstr(max_y - 1, 0, f"[↑/↓] Select  [s] Sort: {sort_by}  [c] Copy header  [q] Quit", curses.A_DIM)
+            addstr(
+                max_y - 1, 0, f"[↑/↓] Select  [s] Sort: {sort_by}  [c] Copy header  [o] Open  [q] Quit", curses.A_DIM
+            )
 
         stdscr.refresh()
         return display_rows
@@ -276,6 +279,10 @@ def run_interactive(
                 if 0 <= selected_idx < len(display_rows):
                     header = display_rows[selected_idx][0] if display_rows[selected_idx] else ""
                     copy_to_clipboard(header)
+            elif key == ord("o"):
+                if 0 <= selected_idx < len(display_rows):
+                    header = display_rows[selected_idx][0] if display_rows[selected_idx] else ""
+                    open_url(f"https://source.chromium.org/chromium/chromium/src/+/main:{header}")
             elif key == ord("r"):
                 if include_analysis is not None and ignores_files and skips_files and acted_on_headers:
                     # Show computing message

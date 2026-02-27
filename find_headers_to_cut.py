@@ -4,9 +4,11 @@ import argparse
 import concurrent.futures
 import csv
 import curses
+import io
 import logging
 import os
 import sys
+import urllib.request
 from itertools import batched
 from typing import Set, Tuple
 
@@ -19,6 +21,7 @@ from cut_header import (
     compute_doms_to_target,
     copy_to_clipboard,
     calculate_floors,
+    gist_to_raw_url,
     is_gist_url,
     load_edges_from_file,
     run_interactive as cut_header_run_interactive,
@@ -87,9 +90,16 @@ def run_interactive(
 ):
     """Run the interactive curses-based TUI for browsing pre-calculated header results."""
 
-    with open(pre_calculated_output, "r", newline="") as f:
-        reader = csv.reader(f)
+    if is_gist_url(pre_calculated_output):
+        raw_url = gist_to_raw_url(pre_calculated_output)
+        response = urllib.request.urlopen(raw_url)
+        content = response.read().decode("utf-8")
+        reader = csv.reader(io.StringIO(content))
         rows = [row for row in reader if row and row[0].strip()]
+    else:
+        with open(pre_calculated_output, "r", newline="") as f:
+            reader = csv.reader(f)
+            rows = [row for row in reader if row and row[0].strip()]
 
     # Sort by top_direct_dominated (column 3) descending
     rows.sort(key=lambda r: int(r[3]) if len(r) > 3 else 0, reverse=True)

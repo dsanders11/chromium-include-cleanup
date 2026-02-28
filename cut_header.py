@@ -852,7 +852,7 @@ def run_interactive(
 
             options = [
                 ("i", "Ignore", f"prepend to {ignores_output_file}"),
-                ("s", "Remove", f"prepend to {removes_output_file}"),
+                ("r", "Remove", f"prepend to {removes_output_file}"),
             ]
             for oi, (key, label, desc) in enumerate(options):
                 prefix = "> " if action_selected == oi else "  "
@@ -962,6 +962,7 @@ def run_interactive(
                     action_mode = False
                     action_taken = True
                 elif key == ord("s"):
+                elif key == ord("r"):
                     includer, included = selectable_lines[selected_idx]
                     prepend_to_file(removes_output_file, includer, included)
                     acted_on[(includer, included)] = "removed"

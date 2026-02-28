@@ -876,6 +876,7 @@ def run_interactive(
 
             addstr(action_row, 0, "  [Esc] Cancel", curses.A_DIM)
             action_row += 1
+            row = action_row
         else:
             # Footer help
             quit_hint = "[b] Back" if nested else "[q] Quit"
@@ -951,7 +952,7 @@ def run_interactive(
                         h.setLevel(level)
                     logger.removeHandler(list_handler)
 
-                data["warnings"] = [f"warning: {r.getMessage()}" for r in list_handler.records]
+                data["warnings"] = sorted(set(f"warning: {r.getMessage()}" for r in list_handler.records))[:5]
                 stdscr.redrawwin()
                 stdscr.refresh()
                 needs_refresh = False

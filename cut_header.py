@@ -633,6 +633,20 @@ def load_edges_from_file(filepath: str) -> Set[Tuple[str, str]]:
     return edges
 
 
+class ListHandler(logging.Handler):
+    """A logging handler that collects log records into a list."""
+
+    def __init__(self):
+        super().__init__()
+        self.records: List[logging.LogRecord] = []
+
+    def emit(self, record):
+        self.records.append(record)
+
+    def clear(self):
+        self.records.clear()
+
+
 def run_interactive(
     include_analysis,
     target: str,
@@ -916,12 +930,28 @@ def run_interactive(
                 removes: Set[Tuple[str, str]] = set()
                 for f in removes_files:
                     removes.update(load_edges_from_file(f))
-                warnings = [
-                    f"warning: edge {includer} -> {included} is in both ignores and removes, it will be treated as removed"
-                    for (includer, included) in ignores.intersection(removes)
-                ]
-                data = compute_data(include_analysis, target, ignores, removes)
-                data["warnings"] = warnings
+
+                # Capture all warnings from the logger during computation,
+                # silencing them from stderr so they only show in the TUI
+                list_handler = ListHandler()
+                list_handler.setLevel(logging.WARNING)
+                logger = logging.getLogger()
+                logger.addHandler(list_handler)
+                saved_levels = [(h, h.level) for h in logger.handlers if h is not list_handler]
+                for h, _ in saved_levels:
+                    h.setLevel(max(h.level, logging.ERROR))
+                try:
+                    for includer, included in ignores.intersection(removes):
+                        logging.warning(
+                            f"edge {includer} -> {included} is in both ignores and removes, it will be treated as removed"
+                        )
+                    data = compute_data(include_analysis, target, ignores, removes)
+                finally:
+                    for h, level in saved_levels:
+                        h.setLevel(level)
+                    logger.removeHandler(list_handler)
+
+                data["warnings"] = [f"warning: {r.getMessage()}" for r in list_handler.records]
                 stdscr.redrawwin()
                 stdscr.refresh()
                 needs_refresh = False
@@ -961,7 +991,6 @@ def run_interactive(
                     acted_on[(includer, included)] = "ignored"
                     action_mode = False
                     action_taken = True
-                elif key == ord("s"):
                 elif key == ord("r"):
                     includer, included = selectable_lines[selected_idx]
                     prepend_to_file(removes_output_file, includer, included)

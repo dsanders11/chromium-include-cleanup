@@ -18,6 +18,7 @@ from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
 from cut_header import (
+    ListHandler,
     compute_direct_cuts,
     compute_doms_to_target,
     copy_to_clipboard,
@@ -89,6 +90,7 @@ def run_interactive(
     ignores_files=None,
     removes_files=None,
     gh_token=None,
+    initial_recalculate=False,
 ):
     """Run the interactive curses-based TUI for browsing pre-calculated header results."""
 
@@ -135,7 +137,7 @@ def run_interactive(
         )
         return sorted_rows[:top_n]
 
-    def render(stdscr, rows, selected_idx, scroll_offset, sort_by, top_n):
+    def render(stdscr, rows, selected_idx, scroll_offset, sort_by, top_n, warnings=None):
         """Render the TUI. Returns the displayed (sorted+sliced) rows list."""
         display_rows = _sorted_and_sliced(rows, sort_by, top_n)
 
@@ -176,8 +178,12 @@ def run_interactive(
             addstr(row, col_tsize, "tsize", col_attr("tsize"))
         row += 1
 
-        # Available lines for data rows (reserve 2 for footer)
-        available_lines = max_y - row - 2
+        # Reserve space at bottom: 1 for footer help, 1 for scroll indicator, plus warnings
+        warning_lines = warnings or []
+        reserved_bottom = 2 + len(warning_lines)
+
+        # Available lines for data rows
+        available_lines = max_y - row - reserved_bottom
 
         visible_rows = display_rows[scroll_offset : scroll_offset + available_lines]
 
@@ -217,23 +223,28 @@ def run_interactive(
             row += 1
 
         # Scroll indicator
-        footer_row = max_y - 2
+        scroll_row = max_y - reserved_bottom
         if len(display_rows) > available_lines:
-            addstr(footer_row, 0, f"[{selected_idx + 1}/{len(display_rows)}]", curses.A_DIM)
+            addstr(scroll_row, 0, f"[{selected_idx + 1}/{len(display_rows)}]", curses.A_DIM)
 
         # Footer help
+        footer_row = max_y - 1 - len(warning_lines)
         can_enter = include_analysis is not None and ignores_files and removes_files
         has_stale = len(acted_on_headers) > 0
         if can_enter:
             parts = ["[↑/↓] Select", "[Enter] Inspect"]
             if has_stale:
                 parts.append("[r] Refresh")
-            parts.extend([f"[s] Sort: {sort_by}", "[c] Copy header", "[o] Open", "[q] Quit"])
-            addstr(max_y - 1, 0, "  ".join(parts), curses.A_DIM)
+            parts.extend(["[R] Recalculate all", f"[s] Sort: {sort_by}", "[c] Copy header", "[o] Open", "[q] Quit"])
+            addstr(footer_row, 0, "  ".join(parts), curses.A_DIM)
         else:
             addstr(
-                max_y - 1, 0, f"[↑/↓] Select  [s] Sort: {sort_by}  [c] Copy header  [o] Open  [q] Quit", curses.A_DIM
+                footer_row, 0, f"[↑/↓] Select  [s] Sort: {sort_by}  [c] Copy header  [o] Open  [q] Quit", curses.A_DIM
             )
+
+        # Warnings
+        for wi, warning in enumerate(warning_lines):
+            addstr(max_y - len(warning_lines) + wi, 0, warning, curses.color_pair(3) | curses.A_BOLD)
 
         stdscr.refresh()
         return display_rows
@@ -247,17 +258,89 @@ def run_interactive(
         curses.use_default_colors()
         curses.init_pair(1, curses.COLOR_GREEN, -1)  # Selected asterisk / acted-on headers
         curses.init_pair(2, curses.COLOR_CYAN, -1)  # Unused, reserved
-        curses.init_pair(3, curses.COLOR_RED, -1)  # Unused, reserved
+        curses.init_pair(3, curses.COLOR_RED, -1)  # Warnings
         curses.init_pair(4, curses.COLOR_YELLOW, -1)  # Percentages
         curses.init_pair(5, curses.COLOR_MAGENTA, -1)  # Dominated edges
 
         selected_idx = 0
         scroll_offset = 0
         sort_by = "dominated"
+        warnings = []
+
+        # Recalculate values using latest include analysis data
+        if initial_recalculate and include_analysis is not None and ignores_files and removes_files:
+            # Initial filtering - sort by default sort and take top_n
+            initial_display = _sorted_and_sliced(rows, sort_by, top_n)
+            total = len(initial_display)
+
+            # Load current ignores and removes from files
+            ignores: Set[Tuple[str, str]] = set()
+            for f in ignores_files:
+                ignores.update(load_edges_from_file(f))
+            removes: Set[Tuple[str, str]] = set()
+            for f in removes_files:
+                removes.update(load_edges_from_file(f))
+
+            # Capture all warnings from the logger during computation,
+            # silencing them from stderr so they only show in the TUI
+            list_handler = ListHandler()
+            list_handler.setLevel(logging.WARNING)
+            logger = logging.getLogger()
+            logger.addHandler(list_handler)
+            saved_levels = [(h, h.level) for h in logger.handlers if h is not list_handler]
+            for h, _ in saved_levels:
+                h.setLevel(max(h.level, logging.ERROR))
+
+            try:
+                for i, row_data in enumerate(initial_display):
+                    header = row_data[0] if row_data else ""
+                    stdscr.erase()
+                    stdscr.addstr(0, 0, f"Recalculating with latest data... [{i + 1}/{total}] {header}", curses.A_BOLD)
+                    stdscr.refresh()
+
+                    if header:
+                        try:
+                            floors = calculate_floors(
+                                include_analysis,
+                                header,
+                                ignores=tuple(ignores),
+                                removes=tuple(removes),
+                            )
+                            edge_dominations = compute_doms_to_target(
+                                include_analysis,
+                                floors["DG"],
+                                header,
+                            )
+                            top_directs = compute_direct_cuts(
+                                include_analysis,
+                                floors["DG"],
+                                header,
+                                edge_dominations,
+                            )
+                            top_directs.sort(key=lambda x: x[3], reverse=True)
+                            top_direct_dominated = top_directs[0][3] if top_directs else 0
+
+                            row_data[1] = f"{floors['remaining_pct']:.2f}"
+                            row_data[2] = f"{floors['all_cuts_floor_pct']:.2f}"
+                            row_data[3] = str(top_direct_dominated)
+                        except Exception:
+                            pass  # Keep pre-calculated data on error
+            finally:
+                for h, level in saved_levels:
+                    h.setLevel(level)
+                logger.removeHandler(list_handler)
+
+            warnings = sorted(set(f"warning: {r.getMessage()}" for r in list_handler.records))[:5]
+
+            # Replace rows with the filtered and recalculated set
+            rows[:] = initial_display
+
+            stdscr.redrawwin()
+            stdscr.refresh()
 
         while True:
             max_y, _ = stdscr.getmaxyx()
-            available_lines = max_y - 4  # title + column header + 2 footer lines
+            available_lines = max_y - 4 - len(warnings)  # title + column header + 2 footer lines + warnings
 
             # Ensure scroll keeps selected item visible
             if selected_idx < scroll_offset:
@@ -265,7 +348,7 @@ def run_interactive(
             elif selected_idx >= scroll_offset + available_lines:
                 scroll_offset = selected_idx - available_lines + 1
 
-            display_rows = render(stdscr, rows, selected_idx, scroll_offset, sort_by, top_n)
+            display_rows = render(stdscr, rows, selected_idx, scroll_offset, sort_by, top_n, warnings)
 
             key = stdscr.getch()
 
@@ -284,11 +367,23 @@ def run_interactive(
                 if 0 <= selected_idx < len(display_rows):
                     header = display_rows[selected_idx][0] if display_rows[selected_idx] else ""
                     open_url(f"https://source.chromium.org/chromium/chromium/src/+/main:{header}")
-            elif key == ord("r"):
-                if include_analysis is not None and ignores_files and removes_files and acted_on_headers:
+            elif key == ord("r") or key == ord("R"):
+                recalculate_all = key == ord("R")
+
+                if (
+                    include_analysis is not None
+                    and ignores_files
+                    and removes_files
+                    and (recalculate_all or acted_on_headers)
+                ):
                     # Show computing message
                     stdscr.erase()
-                    stdscr.addstr(0, 0, "Refreshing modified headers... please wait", curses.A_BOLD)
+                    if recalculate_all:
+                        stdscr.addstr(0, 0, "Recalculating all headers... please wait", curses.A_BOLD)
+                        acted_on_headers.clear()
+                        acted_on_headers.update(row[0] for row in display_rows)
+                    else:
+                        stdscr.addstr(0, 0, "Refreshing modified headers... please wait", curses.A_BOLD)
                     stdscr.refresh()
 
                     # Load current ignores and removes from files
@@ -299,36 +394,59 @@ def run_interactive(
                     for f in removes_files:
                         removes.update(load_edges_from_file(f))
 
-                    # Recalculate for each acted-on header
-                    for row_data in rows:
-                        header = row_data[0] if row_data else ""
-                        if header in acted_on_headers:
-                            try:
-                                floors = calculate_floors(
-                                    include_analysis,
-                                    header,
-                                    ignores=tuple(ignores),
-                                    removes=tuple(removes),
-                                )
-                                edge_dominations = compute_doms_to_target(
-                                    include_analysis,
-                                    floors["DG"],
-                                    header,
-                                )
-                                top_directs = compute_direct_cuts(
-                                    include_analysis,
-                                    floors["DG"],
-                                    header,
-                                    edge_dominations,
-                                )
-                                top_directs.sort(key=lambda x: x[3], reverse=True)
-                                top_direct_dominated = top_directs[0][3] if top_directs else 0
+                    # Capture all warnings from the logger during computation,
+                    # silencing them from stderr so they only show in the TUI
+                    list_handler = ListHandler()
+                    list_handler.setLevel(logging.WARNING)
+                    logger = logging.getLogger()
+                    logger.addHandler(list_handler)
+                    saved_levels = [(h, h.level) for h in logger.handlers if h is not list_handler]
+                    for h, _ in saved_levels:
+                        h.setLevel(max(h.level, logging.ERROR))
 
-                                row_data[1] = f"{floors['remaining_pct']:.2f}"
-                                row_data[2] = f"{floors['all_cuts_floor_pct']:.2f}"
-                                row_data[3] = str(top_direct_dominated)
-                            except Exception:
-                                pass  # Keep stale data on error
+                    try:
+                        # Recalculate for each acted-on header
+                        total = len(acted_on_headers)
+                        i = 0
+                        for row_data in display_rows:
+                            header = row_data[0] if row_data else ""
+                            if header in acted_on_headers:
+                                stdscr.erase()
+                                stdscr.addstr(0, 0, f"Recalculating with latest data... [{i + 1}/{total}] {header}", curses.A_BOLD)
+                                stdscr.refresh()
+                                i += 1
+                                try:
+                                    floors = calculate_floors(
+                                        include_analysis,
+                                        header,
+                                        ignores=tuple(ignores),
+                                        removes=tuple(removes),
+                                    )
+                                    edge_dominations = compute_doms_to_target(
+                                        include_analysis,
+                                        floors["DG"],
+                                        header,
+                                    )
+                                    top_directs = compute_direct_cuts(
+                                        include_analysis,
+                                        floors["DG"],
+                                        header,
+                                        edge_dominations,
+                                    )
+                                    top_directs.sort(key=lambda x: x[3], reverse=True)
+                                    top_direct_dominated = top_directs[0][3] if top_directs else 0
+
+                                    row_data[1] = f"{floors['remaining_pct']:.2f}"
+                                    row_data[2] = f"{floors['all_cuts_floor_pct']:.2f}"
+                                    row_data[3] = str(top_direct_dominated)
+                                except Exception:
+                                    pass  # Keep stale data on error
+                    finally:
+                        for h, level in saved_levels:
+                            h.setLevel(level)
+                        logger.removeHandler(list_handler)
+
+                    warnings = sorted(set(f"warning: {r.getMessage()}" for r in list_handler.records))[:5]
 
                     acted_on_headers.clear()
                     stdscr.redrawwin()
@@ -435,6 +553,12 @@ def main():
     parser.add_argument(
         "--top", type=int, default=5, help="Number of top headers to display (default: 5, requires --interactive)."
     )
+    parser.add_argument(
+        "--initial-recalculate",
+        action="store_true",
+        default=False,
+        help="Recalculate values on startup using latest include analysis data (requires --interactive).",
+    )
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose logging.")
     args = parser.parse_args()
 
@@ -442,6 +566,8 @@ def main():
         parser.error("--pre-calculated-output requires --interactive")
     if args.top != 5 and not args.interactive:
         parser.error("--top requires --interactive")
+    if args.initial_recalculate and not args.interactive:
+        parser.error("--initial-recalculate requires --interactive")
     if args.interactive and not args.pre_calculated_output:
         parser.error("--interactive requires --pre-calculated-output")
 
@@ -492,6 +618,7 @@ def main():
             ignores_files=ignores_files,
             removes_files=removes_files,
             gh_token=gh_token,
+            initial_recalculate=args.initial_recalculate,
         )
         return 0
 

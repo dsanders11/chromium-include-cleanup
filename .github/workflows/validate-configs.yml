@@ -19,12 +19,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Validate JSON schema
-        uses: dsanders11/json-schema-validate-action@b5da274adf09991e884b85426bcf941e0477771b # v1.3.0
+        uses: dsanders11/json-schema-validate-action@eddf079f55830cc9a916a3c512ba9086240d2fea # v2.0.0
         with:
           schema: json-schema
           files: config.schema.json
       - name: Validate configs
-        uses: dsanders11/json-schema-validate-action@b5da274adf09991e884b85426bcf941e0477771b # v1.3.0
+        uses: dsanders11/json-schema-validate-action@eddf079f55830cc9a916a3c512ba9086240d2fea # v2.0.0
         with:
           schema: config.schema.json
           files: configs/*.json

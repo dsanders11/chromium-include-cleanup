@@ -93,22 +93,21 @@ def create_include_graph(
     # Set capacity high for edges inside generated files to prevent cutting them
     # TODO - make this optional
     for edge in DG.edges():
-        if files[edge[0]].startswith("out/"):
+        filename = files[edge[0]]
+
+        if filename.startswith("out/"):
             DG[edge[0]][edge[1]]["capacity"] = float("inf")
-        elif files[edge[0]].startswith("build/linux/debian_bullseye_amd64-sysroot/"):
+        elif filename.startswith("build/linux/debian_bullseye_amd64-sysroot/"):
             DG[edge[0]][edge[1]]["capacity"] = float("inf")
-        elif files[edge[0]].startswith("third_party/llvm-build/Release+Asserts/"):
+        elif filename.startswith("third_party/llvm-build/Release+Asserts/"):
             DG[edge[0]][edge[1]]["capacity"] = float("inf")
-        elif files[edge[0]].startswith("third_party/abseil-cpp/"):
+        elif filename.startswith("third_party/abseil-cpp/"):
             DG[edge[0]][edge[1]]["capacity"] = float("inf")
-        elif files[edge[0]].startswith("v8/include/"):
+        elif filename.startswith("v8/include/"):
             DG[edge[0]][edge[1]]["capacity"] = float("inf")
 
     # Remove everything in the graph that's not reachable from the target to speed up analysis
-    reachable_nodes = set(nx.dfs_postorder_nodes(DG.reverse(False), source=file_idx_lookup[target]))
-    DG.remove_nodes_from([idx for idx in list(DG.nodes()) if idx not in reachable_nodes])
-
-    return DG
+    return DG.subgraph(nx.dfs_postorder_nodes(DG.reverse(False), source=file_idx_lookup[target])).copy()
 
 
 def compute_direct_cuts_floor(
@@ -126,8 +125,8 @@ def compute_direct_cuts_floor(
     DG2 = DG.copy()
 
     # Remove all direct includes of target that are not ignored (infinite capacity)
-    for includer_idx, _ in list(DG2.in_edges(target_idx)):
-        if DG2[includer_idx][target_idx].get("capacity", 1) != float("inf"):
+    for includer_idx, _, capacity in list(DG2.in_edges(target_idx, "capacity", 1)):
+        if capacity != float("inf"):
             DG2.remove_edge(includer_idx, target_idx)
 
     return count_reachable_roots(include_analysis, DG2, target)
@@ -147,8 +146,8 @@ def compute_all_cuts_floor(
     DG2 = DG.copy()
 
     # Remove all edges that are not ignored (infinite capacity)
-    for includer_idx, included_idx in DG.edges():
-        if DG2[includer_idx][included_idx].get("capacity", 1) != float("inf"):
+    for includer_idx, included_idx, capacity in DG.edges(None, "capacity", 1):
+        if capacity != float("inf"):
             DG2.remove_edge(includer_idx, included_idx)
 
     return count_reachable_roots(include_analysis, DG2, target)
@@ -316,9 +315,9 @@ def compute_direct_cuts(
     target_idx = files.index(target)
     direct_includers = []
 
-    for includer_idx, _ in DG.in_edges(target_idx):
+    for includer_idx, _, capacity in DG.in_edges(target_idx, "capacity", 1):
         # Skip ignored edges (infinite capacity)
-        if DG[includer_idx][target_idx].get("capacity", 1) == float("inf"):
+        if capacity == float("inf"):
             continue
 
         includer_file = files[includer_idx]

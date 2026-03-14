@@ -438,12 +438,11 @@ def compute_added_sizes(args):
 
 # Adapted from analyze_includes.py in Chromium
 def compute_doms_to_target(include_analysis: IncludeAnalysisOutput, DG: nx.DiGraph, target: str):
-    DG2 = DG.copy()
     files = include_analysis["files"]
     target_idx = files.index(target)
 
     # Find reachable roots
-    reachable_nodes = set(files[idx] for idx in nx.dfs_postorder_nodes(DG2.reverse(False), source=target_idx))
+    reachable_nodes = set(files[idx] for idx in nx.dfs_postorder_nodes(DG.reverse(False), source=target_idx))
     roots = [
         root
         for root in include_analysis["roots"]

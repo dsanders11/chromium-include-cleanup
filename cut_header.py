@@ -56,12 +56,14 @@ def create_include_graph(
 ) -> nx.DiGraph:
     DG: nx.DiGraph = create_graph_from_include_analysis(include_analysis)
     files = include_analysis["files"]
+    files_set = set(files)
+    file_idx_lookup = {filename: idx for idx, filename in enumerate(files)}
 
     if removes:
         for includer, included in removes:
-            if includer in files and included in files:
-                includer_idx = files.index(includer)
-                included_idx = files.index(included)
+            if includer in files_set and included in files_set:
+                includer_idx = file_idx_lookup[includer]
+                included_idx = file_idx_lookup[included]
 
                 if DG.has_edge(includer_idx, included_idx):
                     DG.remove_edge(includer_idx, included_idx)
@@ -73,16 +75,16 @@ def create_include_graph(
     if ignores:
         # Set capacity high for ignored edges to prevent cutting them
         for includer, included in ignores:
-            if includer in files and included in files:
-                includer_idx = files.index(includer)
-                included_idx = files.index(included)
+            if includer in files_set and included in files_set:
+                includer_idx = file_idx_lookup[includer]
+                included_idx = file_idx_lookup[included]
 
                 if DG.has_edge(includer_idx, included_idx):
                     DG[includer_idx][included_idx]["capacity"] = float("inf")
                 else:
                     logging.warning(f"Ignore edge {includer} -> {included} not found in include graph")
-            elif includer in files and included == "*":
-                includer_idx = files.index(includer)
+            elif includer in files_set and included == "*":
+                includer_idx = file_idx_lookup[includer]
                 for _, included_idx in DG.out_edges(includer_idx):
                     DG[includer_idx][included_idx]["capacity"] = float("inf")
             else:
@@ -93,21 +95,17 @@ def create_include_graph(
     for edge in DG.edges():
         if files[edge[0]].startswith("out/"):
             DG[edge[0]][edge[1]]["capacity"] = float("inf")
-
-        if files[edge[0]].startswith("build/linux/debian_bullseye_amd64-sysroot/"):
+        elif files[edge[0]].startswith("build/linux/debian_bullseye_amd64-sysroot/"):
             DG[edge[0]][edge[1]]["capacity"] = float("inf")
-
-        if files[edge[0]].startswith("third_party/llvm-build/Release+Asserts/"):
+        elif files[edge[0]].startswith("third_party/llvm-build/Release+Asserts/"):
             DG[edge[0]][edge[1]]["capacity"] = float("inf")
-
-        if files[edge[0]].startswith("third_party/abseil-cpp/"):
+        elif files[edge[0]].startswith("third_party/abseil-cpp/"):
             DG[edge[0]][edge[1]]["capacity"] = float("inf")
-
-        if files[edge[0]].startswith("v8/include/"):
+        elif files[edge[0]].startswith("v8/include/"):
             DG[edge[0]][edge[1]]["capacity"] = float("inf")
 
     # Remove everything in the graph that's not reachable from the target to speed up analysis
-    reachable_nodes = set(nx.dfs_postorder_nodes(DG.reverse(False), source=files.index(target)))
+    reachable_nodes = set(nx.dfs_postorder_nodes(DG.reverse(False), source=file_idx_lookup[target]))
     DG.remove_nodes_from([idx for idx in list(DG.nodes()) if idx not in reachable_nodes])
 
     return DG

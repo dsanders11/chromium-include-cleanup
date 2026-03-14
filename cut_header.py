@@ -107,7 +107,7 @@ def create_include_graph(
             DG[edge[0]][edge[1]]["capacity"] = float("inf")
 
     # Remove everything in the graph that's not reachable from the target to speed up analysis
-    reachable_nodes = set(nx.dfs_postorder_nodes(DG.reverse(), source=files.index(target)))
+    reachable_nodes = set(nx.dfs_postorder_nodes(DG.reverse(False), source=files.index(target)))
     DG.remove_nodes_from([idx for idx in list(DG.nodes()) if idx not in reachable_nodes])
 
     return DG
@@ -238,7 +238,7 @@ def compute_top_indirect_cuts(
     DG2.add_node(PSEUDO_SOURCE)
 
     # Find reachable roots
-    reachable_nodes = set(files[idx] for idx in nx.dfs_postorder_nodes(DG2.reverse(), source=target_idx))
+    reachable_nodes = set(files[idx] for idx in nx.dfs_postorder_nodes(DG2.reverse(False), source=target_idx))
     reachable_roots = [
         root
         for root in include_analysis["roots"]
@@ -445,7 +445,7 @@ def compute_doms_to_target(include_analysis: IncludeAnalysisOutput, DG: nx.DiGra
     target_idx = files.index(target)
 
     # Find reachable roots
-    reachable_nodes = set(files[idx] for idx in nx.dfs_postorder_nodes(DG2.reverse(), source=target_idx))
+    reachable_nodes = set(files[idx] for idx in nx.dfs_postorder_nodes(DG2.reverse(False), source=target_idx))
     roots = [
         root
         for root in include_analysis["roots"]

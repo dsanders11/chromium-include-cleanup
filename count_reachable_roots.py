@@ -41,7 +41,7 @@ def count_reachable_roots(
     target_node = files.index(target)
 
     reachable_nodes = set(
-        [files[idx] for idx in nx.dfs_postorder_nodes(DG.reverse(), source=target_node) if idx != target_node]
+        [files[idx] for idx in nx.dfs_postorder_nodes(DG.reverse(False), source=target_node) if idx != target_node]
     )
 
     reachable_roots = set(include_analysis["roots"]).intersection(reachable_nodes)

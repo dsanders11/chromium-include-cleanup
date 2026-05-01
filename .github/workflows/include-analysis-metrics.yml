@@ -28,7 +28,7 @@ jobs:
       - name: Find Heavy Include edges
         run: |
           python extract_include_analysis_metrics.py --edges --filter-generated-files --filter-third-party --weight-threshold 75000000 > heavy-includes.csv
-      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: heavy-includes
           path: heavy-includes.csv

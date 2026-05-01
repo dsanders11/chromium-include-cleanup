@@ -36,7 +36,7 @@ jobs:
           python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric prevalence > priority-unused-includes.prevalence.csv
           python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric includer_size > priority-unused-includes.includer_size.csv
           python set_edge_weights.py priority-unused-includes.csv include-analysis.js --config chromium --metric centrality > priority-unused-includes.centrality.csv
-      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: weighted-unused-includes
           path: |
